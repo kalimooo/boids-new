@@ -1,0 +1,171 @@
+#version 450
+#extension GL_ARB_compute_shader : enable
+#extension GL_ARB_shader_storage_buffer_object : enable
+
+struct BoidData {
+    vec2 pos;
+    vec2 vel;
+};
+
+layout( std430, binding=3 ) buffer BoidBuffer
+{
+    BoidData boids[];
+};
+
+uniform float deltaTime;
+uniform float time;
+
+uniform float visualRange;
+uniform float protectedRange;
+uniform float centeringFactor;
+uniform float matchingFactor;
+uniform float avoidFactor;
+uniform float borderMargin;
+uniform float turnFactor;
+uniform float minSpeed;
+uniform float maxSpeed;
+uniform float randFactor;
+// uniform vec2 bounds;
+
+layout( local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+
+// Psuedo-random generator courtesy of https://stackoverflow.com/a/17479300
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct( uint m ) {
+    const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+    const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+
+    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m |= ieeeOne;                          // Add fractional part to 1.0
+
+    float  f = uintBitsToFloat( m );       // Range [1:2]
+    return f - 1.5;                        // Range [-0.5:0.5]
+}
+
+// Pseudo-random value in half-open range [0:1].
+float random( float x ) { return floatConstruct(hash(floatBitsToUint(x))); }
+
+void main() {
+
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= boids.length()) return;
+
+    BoidData boid = boids[gid];
+
+    // Add a bit of random direction unique to each boid
+    float rand = random(time + gid);
+    boid.vel += vec2(rand) * randFactor;
+    //boid.pos = boid.pos + boid.vel * deltaTime;
+    //boids[gid] = boid;
+
+    // ------------------------ BOID BEHAVIOUR ------------------------------
+    // Boid behaviour according to https://people.ece.cornell.edu/land/courses/ece4760/labs/s2021/Boids/Boids.html#Pseudocode
+    float xpos_avg = 0.0, ypos_avg = 0.0, xvel_avg = 0.0, yvel_avg = 0.0, close_dx = 0.0, close_dy = 0.0;
+    // vec2 pos_avg = vec2(0.0);
+    // vec2 vel_avg = vec2(0.0);
+    // vec2 close_d = vec2(0.0);
+    int neighboring_boids = 0;
+
+    for (int i = 0; i < boids.length(); i++) {
+        // Same boid
+        if (i == gid) continue;
+
+        BoidData other = boids[i];
+        float dx = boid.pos.x - other.pos.x;
+        float dy = boid.pos.y - other.pos.y;
+
+        // Outside of visual range
+        if ((abs(dx) > visualRange) || (abs(dy) > visualRange)) continue;
+
+        float squared_distance = dx*dx + dy*dy;
+
+        if (squared_distance < (protectedRange * protectedRange)) {
+            close_dx += boid.pos.x - other.pos.x;
+            close_dy += boid.pos.y - other.pos.y;
+        }
+        else if (squared_distance < (visualRange * visualRange)) {
+            // Add other boid's x/y-coord and x/y vel to accumulator variables
+            xpos_avg += other.pos.x;
+            ypos_avg += other.pos.y;
+            xvel_avg += other.vel.x;
+            yvel_avg += other.vel.y;
+
+            // Increment number of boids within visual range
+            neighboring_boids += 1;
+        }
+    }
+
+    if (neighboring_boids > 0) {
+        // Divide accumulator variables by number of boids in visual range
+        xpos_avg = xpos_avg/neighboring_boids;
+        ypos_avg = ypos_avg/neighboring_boids;
+        xvel_avg = xvel_avg/neighboring_boids;
+        yvel_avg = yvel_avg/neighboring_boids;
+
+        // Add the centering/matching contributions to velocity
+        boid.vel.x = (boid.vel.x + 
+                   (xpos_avg - boid.pos.x)*centeringFactor + 
+                   (xvel_avg - boid.vel.x)*matchingFactor);
+
+        boid.vel.y = (boid.vel.y + 
+                   (ypos_avg - boid.pos.y)*centeringFactor + 
+                   (yvel_avg - boid.vel.y)*matchingFactor);
+    }
+
+    // Add the avoidance contribution to velocity
+    boid.vel.x = boid.vel.x + (close_dx*avoidFactor);
+    boid.vel.y = boid.vel.y + (close_dy*avoidFactor);
+
+    // If the boid is near an edge, make it turn by turnfactor
+    // Top border
+    if (boid.pos.y > (1.0 - borderMargin))
+        boid.vel.y = boid.vel.y - turnFactor;
+    // Right border
+    if (boid.pos.x > (1.0 - borderMargin))
+        boid.vel.x = boid.vel.x - turnFactor;
+    // Left border
+    if (boid.pos.x < (-1.0 + borderMargin))
+        boid.vel.x = boid.vel.x + turnFactor;
+    // Bottom border
+    if (boid.pos.y < (-1.0 + borderMargin))
+        boid.vel.y = boid.vel.y + turnFactor;
+        
+    float speed = sqrt(boid.vel.x*boid.vel.x + boid.vel.y*boid.vel.y);
+
+    // Enforce min and max speeds
+    if (speed < minSpeed) {
+        boid.vel = boid.vel * minSpeed / speed;
+    }
+
+    if (speed > maxSpeed) {
+        boid.vel = boid.vel * maxSpeed / speed;
+    }
+
+    // Update boid's position
+    
+    boid.pos = boid.pos + boid.vel * deltaTime;
+
+    // // Check for collisions with the walls and reverse velection if necessary
+    // if (boid.pos.x < -bounds.x || boid.pos.x > bounds.x) {
+    //     boid.vel.x *= -1.0; // Reverse velection along the x-axis
+    //     boid.pos.x = clamp(boid.pos.x, -bounds.x, bounds.x); // Keep the boid within bounds
+    // }
+    // if (boid.pos.y < -bounds.y || boid.pos.y > bounds.y) {
+    //     boid.vel.y *= -1.0; // Reverse velection along the y-axis
+    //     boid.pos.y = clamp(boid.pos.y, -bounds.y, bounds.y); // Keep the boid within bounds
+    // }
+
+    boids[gid] = boid;
+}
