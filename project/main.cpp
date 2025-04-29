@@ -59,7 +59,7 @@ struct boid {
 GLuint posVBO;
 GLuint boidSSBO;
 
-const int NUM_BOIDS = 20;
+const int NUM_BOIDS = 100000;
 
 boid* boids;
 
@@ -85,7 +85,6 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 FboInfo fbos[2];
 GLuint blendProgram;
-
 
 void initializeBoids()
 {
@@ -122,17 +121,17 @@ void updateBoidPositions(float deltaTime, bool use_GPU)
 		glUseProgram(computeShaderProgram);
 
 		labhelper::setUniformSlow(computeShaderProgram, "deltaTime", deltaTime);
-		labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
-		labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
-		labhelper::setUniformSlow(computeShaderProgram, "centeringFactor", centeringFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "matchingFactor", matchingFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "avoidFactor", avoidFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "borderMargin", borderMargin);
-		labhelper::setUniformSlow(computeShaderProgram, "turnFactor", turnFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "minSpeed", minSpeed);
-		labhelper::setUniformSlow(computeShaderProgram, "maxSpeed", maxSpeed);
-		labhelper::setUniformSlow(computeShaderProgram, "time", currentTime);
-		labhelper::setUniformSlow(computeShaderProgram, "randFactor", randFactor);
+		// labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
+		// labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
+		// labhelper::setUniformSlow(computeShaderProgram, "centeringFactor", centeringFactor);
+		// labhelper::setUniformSlow(computeShaderProgram, "matchingFactor", matchingFactor);
+		// labhelper::setUniformSlow(computeShaderProgram, "avoidFactor", avoidFactor);
+		// labhelper::setUniformSlow(computeShaderProgram, "borderMargin", borderMargin);
+		// labhelper::setUniformSlow(computeShaderProgram, "turnFactor", turnFactor);
+		// labhelper::setUniformSlow(computeShaderProgram, "minSpeed", minSpeed);
+		// labhelper::setUniformSlow(computeShaderProgram, "maxSpeed", maxSpeed);
+		// labhelper::setUniformSlow(computeShaderProgram, "time", currentTime);
+		// labhelper::setUniformSlow(computeShaderProgram, "randFactor", randFactor);
 
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
@@ -314,8 +313,8 @@ void display(void)
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, oldFB.colorTextureTargets[0]);
 
-	labhelper::setUniformSlow(blendProgram, "blendFactor", 0.95f);
-	labhelper::setUniformSlow(blendProgram, "decayFactor", 0.8f);
+	labhelper::setUniformSlow(blendProgram, "blendFactor", 0.995f);
+	labhelper::setUniformSlow(blendProgram, "decayFactor", 1.0f);
 
 	labhelper::drawFullScreenQuad();
 
