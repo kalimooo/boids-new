@@ -27,7 +27,7 @@ uniform float maxSpeed;
 uniform float randFactor;
 // uniform vec2 bounds;
 
-layout( local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout( local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 
 // Psuedo-random generator courtesy of https://stackoverflow.com/a/17479300
