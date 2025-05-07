@@ -153,6 +153,8 @@ void main() {
         boid.vel = boid.vel * maxSpeed / speed;
     }
 
+    // boid.vel = boid.vel * (maxSpeed + minSpeed) / (2 * speed);
+
     // Update boid's position
     
     boid.pos = boid.pos + boid.vel * deltaTime;

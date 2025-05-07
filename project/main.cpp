@@ -299,6 +299,8 @@ void display(void)
 		labhelper::perf::Scope s( "Scene" );
 		
 		glUseProgram(shaderProgram);
+		labhelper::setUniformSlow(shaderProgram, "minSpeed", minSpeed);
+		labhelper::setUniformSlow(shaderProgram, "maxSpeed", maxSpeed);
 		glBindVertexArray(vao);
 		glDrawArrays(GL_POINTS, 0, NUM_BOIDS);
 		glBindVertexArray(0);

@@ -2,10 +2,10 @@
 
 layout(location = 0) in vec4 boid;
 
-out vec2 boidPos;
+out vec2 boidSpeed;
 
 void main()
 {
 	gl_Position = vec4(boid[0], boid[1], 0.0, 1.0);
-	boidPos = vec2(boid[0], boid[1]);
+	boidSpeed = vec2(boid[2], boid[3]);
 }
