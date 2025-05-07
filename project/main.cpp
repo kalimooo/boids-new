@@ -59,7 +59,7 @@ struct boid {
 GLuint posVBO;
 GLuint boidSSBO;
 
-const int NUM_BOIDS = 100000;
+const int NUM_BOIDS = 20000;
 
 boid* boids;
 
@@ -217,7 +217,7 @@ void initialize()
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(boid), 0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(boid), 0);
 	glEnableVertexAttribArray(0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -298,6 +298,8 @@ void display(void)
 		labhelper::perf::Scope s( "Scene" );
 		
 		glUseProgram(shaderProgram);
+		labhelper::setUniformSlow(shaderProgram, "minSpeed", minSpeed);
+		labhelper::setUniformSlow(shaderProgram, "maxSpeed", maxSpeed);
 		glBindVertexArray(vao);
 		glDrawArrays(GL_POINTS, 0, NUM_BOIDS);
 		glBindVertexArray(0);
@@ -313,7 +315,10 @@ void display(void)
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, oldFB.colorTextureTargets[0]);
 
-	labhelper::setUniformSlow(blendProgram, "blendFactor", 0.995f);
+	// labhelper::setUniformSlow(blendProgram, "blendFactor", 0.95f);
+	// labhelper::setUniformSlow(blendProgram, "decayFactor", 0.8f);
+
+	labhelper::setUniformSlow(blendProgram, "blendFactor", 0.85f);
 	labhelper::setUniformSlow(blendProgram, "decayFactor", 1.0f);
 
 	labhelper::drawFullScreenQuad();
