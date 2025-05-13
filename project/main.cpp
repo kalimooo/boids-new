@@ -54,6 +54,8 @@ GLuint vao;
 struct boid {
 	vec2 position;
 	vec2 velocity;
+	uint cellIndex;
+	uint padding;
 };
 
 GLuint posVBO;
@@ -206,17 +208,17 @@ void loadShaders(bool is_reload)
 		blendProgram = shader;
 	}
 
-	shader = labhelper::loadShaderProgram("../project/grid.comp", "../project/grid.frag", is_reload);
-	if(shader != 0)
-	{
-		gridShaderProgram = shader;
-	}
-	
-	shader = labhelper::loadShaderProgram("../project/prefixSum.comp", "../project/prefixSum.frag", is_reload);
-	if(shader != 0)
-	{
-		prefixSumShaderProgram = shader;
-	}
+	// shader = labhelper::loadShaderProgram("../project/grid.comp", "../project/grid.frag", is_reload);
+	// if(shader != 0)
+	// {
+	// 	gridShaderProgram = shader;
+	// }
+
+	// shader = labhelper::loadShaderProgram("../project/prefixSum.comp", "../project/prefixSum.frag", is_reload);
+	// if(shader != 0)
+	// {
+	// 	prefixSumShaderProgram = shader;
+	// }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
