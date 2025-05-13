@@ -79,6 +79,14 @@ float minSpeed = 0.4;
 float maxSpeed = 0.6;
 float randFactor = 0.05f;
 
+///////////////////////////////////////////////////////////////////////////////
+// Grid stuffs
+///////////////////////////////////////////////////////////////////////////////
+uint gridSize = 10;
+GLuint prefixSumSSBO;
+uint* prefixSum = nullptr;
+GLuint boidCellSSBO;
+uint* boidCellCount = nullptr;
 
 ///////////////////////////////////////////////////////////////////////////////
 // For blending
@@ -234,6 +242,22 @@ void initialize()
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
 
+	///////////////////////////////////////////////////////////////////////
+	// Generate and bind buffers for compute shaders
+	///////////////////////////////////////////////////////////////////////
+	// Grid
+	glGenBuffers(1, &prefixSumSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixSumSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize, nullptr,
+					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
+
+	glGenBuffers(1, &boidCellSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidCellSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * NUM_BOIDS, nullptr,
+					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, boidCellSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	int w, h;
 	SDL_GetWindowSize(g_window, &w, &h);
