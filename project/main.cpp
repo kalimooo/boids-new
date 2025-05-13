@@ -88,12 +88,17 @@ uint* prefixSum = nullptr;
 GLuint boidCellSSBO;
 uint* boidCellCount = nullptr;
 
+GLuint gridShaderProgram;
+GLuint prefixSumShaderProgram;
 ///////////////////////////////////////////////////////////////////////////////
 // For blending
 ///////////////////////////////////////////////////////////////////////////////
 FboInfo fbos[2];
 GLuint blendProgram;
 
+void updateGrid() {
+
+}
 
 void initializeBoids()
 {
@@ -199,7 +204,20 @@ void loadShaders(bool is_reload)
 	if(shader != 0)
 	{
 		blendProgram = shader;
-	}}
+	}
+
+	shader = labhelper::loadShaderProgram("../project/grid.comp", "../project/grid.frag", is_reload);
+	if(shader != 0)
+	{
+		gridShaderProgram = shader;
+	}
+	
+	shader = labhelper::loadShaderProgram("../project/prefixSum.comp", "../project/prefixSum.frag", is_reload);
+	if(shader != 0)
+	{
+		prefixSumShaderProgram = shader;
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// This function is called once at the start of the program and never again
