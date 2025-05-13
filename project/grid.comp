@@ -7,28 +7,14 @@ struct BoidData {
     vec2 vel;
 };
 
-layout( std430, binding=3 ) buffer BoidBuffer
+layout( std430, binding=5 ) buffer BoidBuffer
 {
     BoidData boids[];
 };
 
-uniform float deltaTime;
-uniform float time;
-
-uniform float visualRange;
-uniform float protectedRange;
-uniform float centeringFactor;
-uniform float matchingFactor;
-uniform float avoidFactor;
-uniform float borderMargin;
-uniform float turnFactor;
-uniform float minSpeed;
-uniform float maxSpeed;
-uniform float randFactor;
-// uniform vec2 bounds;
+uniform uint gridSize;
 
 layout( local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
-
 
 void main() {
 
