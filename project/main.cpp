@@ -97,6 +97,7 @@ GLuint prefixSumShaderProgram;
 ///////////////////////////////////////////////////////////////////////////////
 FboInfo fbos[2];
 GLuint blendProgram;
+bool additiveBlending = true;
 
 void initGrid() {
 	prefixSums = new GLuint[gridSize * gridSize];
@@ -429,12 +430,15 @@ void display(void)
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, oldFB.colorTextureTargets[0]);
 
-	// labhelper::setUniformSlow(blendProgram, "blendFactor", 0.95f);
-	// labhelper::setUniformSlow(blendProgram, "decayFactor", 0.8f);
-
-	labhelper::setUniformSlow(blendProgram, "blendFactor", 0.85f);
-	labhelper::setUniformSlow(blendProgram, "decayFactor", 1.0f);
-
+	if (additiveBlending) {
+		labhelper::setUniformSlow(blendProgram, "blendFactor", 0.95f);
+		labhelper::setUniformSlow(blendProgram, "decayFactor", 0.8f);
+	} else {
+		labhelper::setUniformSlow(blendProgram, "blendFactor", 0.85f);
+		labhelper::setUniformSlow(blendProgram, "decayFactor", 1.0f);	
+	}
+	labhelper::setUniformSlow(blendProgram, "additiveBlending", additiveBlending);
+	
 	labhelper::drawFullScreenQuad();
 
 	// Render the blended scene to default
@@ -522,6 +526,8 @@ void gui()
 	            ImGui::GetIO().Framerate);
 	// ----------------------------------------------------------
 
+	ImGui::Text("Blending parameters:");
+	ImGui::RadioButton("Additive blending", &additiveBlending);
 	ImGui::Text("Boid parameters:");
 	ImGui::SliderFloat("visualRange", &visualRange, 0.0f, 2.0f);
 	ImGui::SliderFloat("protectedRange", &protectedRange, 0.0f, 1.0f);

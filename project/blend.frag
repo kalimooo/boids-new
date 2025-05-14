@@ -8,6 +8,7 @@ layout(location = 0) out vec4 fragmentColor;
 
 uniform float blendFactor = 0.9;
 uniform float decayFactor = 0.995;
+uniform bool additiveBlending;
 
 /**
 * Helper function to sample with pixel coordinates, e.g., (511.5, 12.75)
@@ -24,6 +25,9 @@ void main() {
     vec4 oldTexFrag = textureRect(oldFrameBufferTexture, gl_FragCoord.xy) * decayFactor;
     
     //fragmentColor = newTexFrag;
-    fragmentColor = newTexFrag + oldTexFrag;
-    //fragmentColor = mix(newTexFrag, oldTexFrag, blendFactor);
+    if (additiveBlending) {
+        fragmentColor = newTexFrag + oldTexFrag;
+    } else {
+        fragmentColor = mix(newTexFrag, oldTexFrag, blendFactor);
+    }
 }
