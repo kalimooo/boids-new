@@ -24,6 +24,6 @@ void main() {
     vec4 oldTexFrag = textureRect(oldFrameBufferTexture, gl_FragCoord.xy) * decayFactor;
     
     //fragmentColor = newTexFrag;
-    //fragmentColor = newTexFrag + oldTexFrag;
-    fragmentColor = mix(newTexFrag, oldTexFrag, blendFactor);
+    fragmentColor = newTexFrag + oldTexFrag;
+    //fragmentColor = mix(newTexFrag, oldTexFrag, blendFactor);
 }

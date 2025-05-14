@@ -7,17 +7,27 @@ struct BoidData {
     vec2 vel;
 };
 
-layout( std430, binding=5 ) buffer bucketSizeBuffer
-{
+layout(std430, binding = 3) buffer BoidBuffer {
+    BoidData boids[];
+};
+
+layout(std430, binding = 5) buffer BucketSizeBuffer {
     uint bucketSizes[];
 };
 
-uniform uint gridSize;
+uniform int gridSize;
+uniform float gridCellSize;
 
-layout( local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 void main() {
-
     uint gid = gl_GlobalInvocationID.x;
     if (gid >= boids.length()) return;
+
+    // Calculate grid cell index
+    vec2 gridPos = floor(boids[gid].pos / gridCellSize);
+    uint cellIndex = uint(gridPos.y) * gridSize + uint(gridPos.x);
+
+    // Increment the bucket size for the corresponding cell
+    atomicAdd(bucketSizes[cellIndex], 1);
 }
