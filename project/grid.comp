@@ -7,9 +7,9 @@ struct BoidData {
     vec2 vel;
 };
 
-layout( std430, binding=3 ) buffer BoidBuffer
+layout( std430, binding=5 ) buffer bucketSizeBuffer
 {
-    BoidData boids[];
+    uint bucketSizes[];
 };
 
 uniform uint gridSize;

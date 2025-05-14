@@ -84,7 +84,7 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-GLint gridSize = 10;
+const GLint gridSize = 10;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
@@ -100,6 +100,20 @@ GLuint blendProgram;
 
 void initGrid() {
 	prefixSums = new GLuint[gridSize * gridSize];
+	bucketSizes = new GLuint[gridSize * gridSize];
+	for (int i = 0; i < gridSize * gridSize; i++) {
+		prefixSums[i] = 0;
+		bucketSizes[i] = 0;
+	}
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixSumSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize * gridSize, prefixSums,
+					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
+	
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize * gridSize, bucketSizes,
+					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
 }
 
 void updateGrid() {
