@@ -86,7 +86,7 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 uint gridSize = 10;
 GLuint prefixSumSSBO;
-uint* prefixSum = nullptr;
+uint* prefixSums = nullptr;
 GLuint boidCellSSBO;
 uint* boidCellCount = nullptr;
 
@@ -268,13 +268,13 @@ void initialize()
 	// Grid
 	glGenBuffers(1, &prefixSumSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixSumSSBO);
-	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize, nullptr,
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize * gridSize, prefixSums,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
 
 	glGenBuffers(1, &boidCellSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidCellSSBO);
-	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * NUM_BOIDS, nullptr,
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize * gridSize, boidCellCount,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, boidCellSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
