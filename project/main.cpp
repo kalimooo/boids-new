@@ -84,11 +84,11 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-uint gridSize = 10;
+GLint gridSize = 10;
 GLuint prefixSumSSBO;
-uint* prefixSums = nullptr;
-GLuint boidCellSSBO;
-uint* boidCellCount = nullptr;
+GLuint* prefixSums = nullptr;
+GLuint bucketSizesSSBO;
+GLuint* bucketSizes = nullptr;
 
 GLuint gridShaderProgram;
 GLuint prefixSumShaderProgram;
@@ -98,8 +98,33 @@ GLuint prefixSumShaderProgram;
 FboInfo fbos[2];
 GLuint blendProgram;
 
-void updateGrid() {
+void initGrid() {
+	prefixSums = new GLuint[gridSize * gridSize];
+}
 
+void updateGrid() {
+	glUseProgram(gridShaderProgram);
+
+	labhelper::setUniformSlow(computeShaderProgram, "gridSize", gridSize);
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+
+	GLint bufMask = GL_MAP_WRITE_BIT;
+	
+	glDispatchCompute(NUM_BOIDS, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+	boids = (boid*) glMapBufferRange( GL_SHADER_STORAGE_BUFFER, 0, sizeof(boid) * NUM_BOIDS, bufMask);
+	if (boids == nullptr) {
+		printf("Error: Failed to map buffer.\n");
+		return;
+	}
+	
+	if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
+		printf("Error: Failed to unmap buffer.\n");
+		return;
+	}
 }
 
 void initializeBoids()
@@ -272,11 +297,11 @@ void initialize()
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
 
-	glGenBuffers(1, &boidCellSSBO);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidCellSSBO);
-	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize * gridSize, boidCellCount,
+	glGenBuffers(1, &bucketSizesSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize * gridSize, bucketSizes,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, boidCellSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	int w, h;
