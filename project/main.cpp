@@ -279,6 +279,7 @@ void updateBoidPositions(float deltaTime, bool use_GPU)
 		labhelper::setUniformSlow(computeShaderProgram, "maxSpeed", maxSpeed);
 		labhelper::setUniformSlow(computeShaderProgram, "time", currentTime);
 		labhelper::setUniformSlow(computeShaderProgram, "randFactor", randFactor);
+		labhelper::setUniformSlow(computeShaderProgram, "gridSize", gridSize);
 
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
