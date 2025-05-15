@@ -63,7 +63,7 @@ struct boid {
 GLuint posVBO;
 GLuint boidSSBO;
 
-const int NUM_BOIDS = 5;
+const int NUM_BOIDS = 100000;
 
 boid* boids;
 
@@ -86,14 +86,17 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const GLint gridSize = 3;
+const GLint gridSize = 10;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
 GLuint* bucketSizes = nullptr;
 
+GLuint reorderedBoidsSSBO;
+
 GLuint gridShaderProgram;
 GLuint prefixSumShaderProgram;
+GLuint reindexShaderProgram;
 ///////////////////////////////////////////////////////////////////////////////
 // For blending
 ///////////////////////////////////////////////////////////////////////////////
@@ -139,12 +142,26 @@ void calculatePrefixSum() {
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint) * gridSize * gridSize, prefixSums);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-	printf("Prefix sums:\n");
-	for (int i = 0; i < gridSize * gridSize; i++) {
-		if (i != 0 && (i) % gridSize == 0) printf("\n");
-		printf("%d ", prefixSums[i]);
-	}
-	printf("\n\n");
+	// printf("Prefix sums:\n");
+	// for (int i = 0; i < gridSize * gridSize; i++) {
+	// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
+	// 	printf("%d ", prefixSums[i]);
+	// }
+	// printf("\n\n");
+}
+
+void reindexBoids() {
+	glUseProgram(reindexShaderProgram);
+
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, reorderedBoidsSSBO);
+
+	glDispatchCompute(NUM_BOIDS, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+	
+	glCopyNamedBufferSubData(reorderedBoidsSSBO, boidSSBO, 0, 0, sizeof(boid) * NUM_BOIDS);
 }
 
 void updateGrid() {
@@ -184,15 +201,17 @@ void updateGrid() {
     // Calculate prefix sum on the CPU
     calculatePrefixSum();
 
+	reindexBoids();
+
 	// for (int i = 0; i < NUM_BOIDS; i++) {
-	// 	printf("Boid %d: (%.2f, %.2f) -> %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].bucketIndex);
+	// 	printf("Boid %d: (%.2f, %.2f) -> %d, %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].gridIndex, boids[i].bucketIndex);
 	// }
-	printf("BucketSizes:\n");
-	for (int i = 0; i < gridSize * gridSize; i++) {
-		if (i != 0 && (i) % gridSize == 0) printf("\n");
-		printf("%d ", bucketSizes[i]);
-	}
-	printf("\n\n");
+	// printf("BucketSizes:\n");
+	// for (int i = 0; i < gridSize * gridSize; i++) {
+	// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
+	// 	printf("%d ", bucketSizes[i]);
+	// }
+	// printf("\n\n");
 }
 
 void initializeBoids()
@@ -263,6 +282,7 @@ void updateBoidPositions(float deltaTime, bool use_GPU)
 
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
 
 		GLint bufMask = GL_MAP_WRITE_BIT;
 
@@ -275,6 +295,7 @@ void updateBoidPositions(float deltaTime, bool use_GPU)
 		glDispatchCompute(NUM_BOIDS, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
 		boids = (boid*) glMapBufferRange( GL_SHADER_STORAGE_BUFFER, 0, sizeof(boid) * NUM_BOIDS, bufMask);
 		if (boids == nullptr) {
 			printf("Error: Failed to map buffer.\n");
@@ -324,6 +345,11 @@ void loadShaders(bool is_reload)
 	if(shader != 0)
 	{
 		gridShaderProgram = shader;
+	}
+
+	shader = labhelper::loadComputeShaderProgram("../project/reindex.comp", is_reload);
+	if (shader != 0) {
+		reindexShaderProgram = shader;
 	}
 
 	// shader = labhelper::loadComputeShaderProgram("../project/prefixSum.comp", is_reload);
@@ -383,6 +409,14 @@ void initialize()
 	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * gridSize * gridSize, prefixSums,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
+
+	// Reindexed boids
+	glGenBuffers(1, &reorderedBoidsSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, reorderedBoidsSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(boid) * NUM_BOIDS, nullptr,
+					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_DYNAMIC_STORAGE_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, reorderedBoidsSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	// glGenBuffers(1, &bucketSizesSSBO);
 	// glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
