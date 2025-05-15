@@ -63,7 +63,7 @@ struct boid {
 GLuint posVBO;
 GLuint boidSSBO;
 
-const int NUM_BOIDS = 10;
+const int NUM_BOIDS = 5;
 
 boid* boids;
 
@@ -79,8 +79,8 @@ float matchingFactor = 0.05;
 float avoidFactor = 0.2;
 float borderMargin = 0.1;
 float turnFactor = 0.35;
-float minSpeed = 0.6;
-float maxSpeed = 0.7;
+float minSpeed = 0.2;
+float maxSpeed = 0.3;
 float randFactor = 0.05f;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -99,7 +99,7 @@ GLuint prefixSumShaderProgram;
 ///////////////////////////////////////////////////////////////////////////////
 FboInfo fbos[2];
 GLuint blendProgram;
-bool additiveBlending = true;
+bool additiveBlending = false;
 
 void initGrid() {
 	prefixSums = new GLuint[gridSize * gridSize];
@@ -118,26 +118,33 @@ void initGrid() {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-	printf("Starting grid:\n");
-	for (int i = 0; i < gridSize * gridSize; i++) {
-		if (i != 0 && (i) % gridSize == 0) printf("\n");
-		printf("%d ", bucketSizes[i]);
-	}
-	printf("\n\n");
+	// printf("Starting grid:\n");
+	// for (int i = 0; i < gridSize * gridSize; i++) {
+	// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
+	// 	printf("%d ", bucketSizes[i]);
+	// }
+	// printf("\n\n");
 }
 
 void calculatePrefixSum() {
-    prefixSums[0] = bucketSizes[0];
+    prefixSums[0] = 0;
     for (int i = 1; i < gridSize * gridSize; ++i) {
-        prefixSums[i] = prefixSums[i - 1] + bucketSizes[i];
+        prefixSums[i] = prefixSums[i - 1] + bucketSizes[i - 1];
     }
 
     // Update the GPU buffer with the new prefix sums
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixSumSSBO);
 
 	// PROBLEM WITH THIS ONE I THINK
-    //glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint) * gridSize * gridSize, prefixSums);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint) * gridSize * gridSize, prefixSums);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+	printf("Prefix sums:\n");
+	for (int i = 0; i < gridSize * gridSize; i++) {
+		if (i != 0 && (i) % gridSize == 0) printf("\n");
+		printf("%d ", prefixSums[i]);
+	}
+	printf("\n\n");
 }
 
 void updateGrid() {
@@ -177,10 +184,10 @@ void updateGrid() {
     // Calculate prefix sum on the CPU
     calculatePrefixSum();
 
-	for (int i = 0; i < NUM_BOIDS; i++) {
-		printf("Boid %d: (%.2f, %.2f) -> %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].cellIndex);
-	}
-
+	// for (int i = 0; i < NUM_BOIDS; i++) {
+	// 	printf("Boid %d: (%.2f, %.2f) -> %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].cellIndex);
+	// }
+	printf("BucketSizes:\n");
 	for (int i = 0; i < gridSize * gridSize; i++) {
 		if (i != 0 && (i) % gridSize == 0) printf("\n");
 		printf("%d ", bucketSizes[i]);
@@ -371,11 +378,11 @@ void initialize()
 	// Generate and bind buffers for compute shaders
 	///////////////////////////////////////////////////////////////////////
 	// Grid
-	// glGenBuffers(1, &prefixSumSSBO);
-	// glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixSumSSBO);
-	// glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize * gridSize, prefixSums,
-	// 				GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-	// glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
+	glGenBuffers(1, &prefixSumSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixSumSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * gridSize * gridSize, prefixSums,
+					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
 
 	// glGenBuffers(1, &bucketSizesSSBO);
 	// glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
