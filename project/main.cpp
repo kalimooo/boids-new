@@ -77,14 +77,14 @@ float matchingFactor = 0.05;
 float avoidFactor = 0.2;
 float borderMargin = 0.1;
 float turnFactor = 0.35;
-float minSpeed = 0.4;
-float maxSpeed = 0.6;
+float minSpeed = 0.2;
+float maxSpeed = 0.3;
 float randFactor = 0.05f;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const GLint gridSize = 2;
+const GLint gridSize = 3;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
@@ -116,6 +116,12 @@ void initGrid() {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+	printf("Starting grid:\n");
+	for (int i = 0; i < gridSize * gridSize; i++) {
+		if (i != 0 && (i) % gridSize == 0) printf("\n");
+		printf("%d ", bucketSizes[i]);
+	}
+	printf("\n\n");
 }
 
 void calculatePrefixSum() {
@@ -134,21 +140,27 @@ void calculatePrefixSum() {
 
 void updateGrid() {
     // Reset bucketSizes buffer on the GPU
-    memset(bucketSizes, 0, sizeof(uint) * gridSize * gridSize);
+    memset(bucketSizes, 0, sizeof(GLuint) * gridSize * gridSize);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint) * gridSize * gridSize, bucketSizes);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+	// for (int i = 0; i < gridSize * gridSize; i++) {
+	// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
+	// 	printf("%d ", bucketSizes[i]);
+	// }
+	// printf("\n\n");
+	
     // Dispatch compute shader to calculate bucket sizes
     glUseProgram(gridShaderProgram);
     labhelper::setUniformSlow(gridShaderProgram, "gridSize", gridSize);
-    labhelper::setUniformSlow(gridShaderProgram, "gridCellSize", 1.0f / gridSize); // Assuming normalized space
-    glDispatchCompute((NUM_BOIDS + 1023) / 1024, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    // labhelper::setUniformSlow(gridShaderProgram, "gridCellSize", 1.0f / gridSize);
+    glDispatchCompute(NUM_BOIDS, 1, 1);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     // Map bucketSizes buffer back to CPU
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
-    bucketSizes = (GLuint*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(uint) * gridSize * gridSize, GL_MAP_READ_BIT);
+    bucketSizes = (GLuint*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(uint) * gridSize * gridSize, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
     if (bucketSizes == nullptr) {
         printf("Error: Failed to map bucketSizes buffer.\n");
         return;
@@ -164,8 +176,8 @@ void updateGrid() {
     calculatePrefixSum();
 
 	for (int i = 0; i < gridSize * gridSize; i++) {
+		if (i != 0 && (i) % gridSize == 0) printf("\n");
 		printf("%d ", bucketSizes[i]);
-		if (i != 0 && (i - 1) % gridSize == 0) printf("\n");
 	}
 	printf("\n\n");
 }
