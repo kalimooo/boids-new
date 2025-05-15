@@ -35,5 +35,5 @@ void main() {
     uint cellIndex = gridPosy * gridSize + gridPosx;
 
     // Increment the bucket size for the corresponding cell
-    atomicAdd(bucketSizes[cellIndex], 1);
+    boids[gid].cellIndex = atomicAdd(bucketSizes[cellIndex], 1);
 }

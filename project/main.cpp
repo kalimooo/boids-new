@@ -63,7 +63,7 @@ struct boid {
 GLuint posVBO;
 GLuint boidSSBO;
 
-const int NUM_BOIDS = 2;
+const int NUM_BOIDS = 10;
 
 boid* boids;
 
@@ -180,6 +180,7 @@ void updateGrid() {
 	for (int i = 0; i < NUM_BOIDS; i++) {
 		printf("Boid %d: (%.2f, %.2f) -> %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].cellIndex);
 	}
+
 	for (int i = 0; i < gridSize * gridSize; i++) {
 		if (i != 0 && (i) % gridSize == 0) printf("\n");
 		printf("%d ", bucketSizes[i]);
