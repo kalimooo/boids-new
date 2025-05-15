@@ -5,8 +5,8 @@
 struct BoidData {
     vec2 pos;
     vec2 vel;
-    uint cellIndex;
-    uint padding;
+    uint bucketIndex;
+    uint gridIndex;
 };
 
 layout(std430, binding = 3) buffer BoidBuffer {
@@ -32,8 +32,9 @@ void main() {
     // Calculate grid cell index
     uint gridPosx = uint(floor(boid.pos.x * gridSize));
     uint gridPosy = uint(floor(boid.pos.y * gridSize));
-    uint cellIndex = gridPosy * gridSize + gridPosx;
+    uint gridIndex = gridPosy * gridSize + gridPosx;
 
     // Increment the bucket size for the corresponding cell
-    boids[gid].cellIndex = atomicAdd(bucketSizes[cellIndex], 1);
+    boids[gid].bucketIndex = atomicAdd(bucketSizes[gridIndex], 1);
+    boids[gid].gridIndex = bucketIndex;
 }

@@ -56,8 +56,8 @@ GLuint vao;
 struct boid {
 	vec2 position;
 	vec2 velocity;
-	uint cellIndex;
-	uint padding;
+	uint bucketIndex;
+	uint gridIndex;
 };
 
 GLuint posVBO;
@@ -185,7 +185,7 @@ void updateGrid() {
     calculatePrefixSum();
 
 	// for (int i = 0; i < NUM_BOIDS; i++) {
-	// 	printf("Boid %d: (%.2f, %.2f) -> %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].cellIndex);
+	// 	printf("Boid %d: (%.2f, %.2f) -> %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].bucketIndex);
 	// }
 	printf("BucketSizes:\n");
 	for (int i = 0; i < gridSize * gridSize; i++) {
