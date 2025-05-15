@@ -35,7 +35,7 @@ uniform float minSpeed;
 uniform float maxSpeed;
 uniform float randFactor;
 
-uniform uint gridSize;
+uniform int gridSize;
 
 layout( local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
@@ -77,96 +77,94 @@ void main() {
     // Add a bit of random direction unique to each boid
     float rand = random(time + gid);
     boid.vel += vec2(rand) * randFactor;
-    //boid.pos = boid.pos + boid.vel * deltaTime;
-    //boids[gid] = boid;
 
     // ------------------------ BOID BEHAVIOUR ------------------------------
-    // Boid behaviour according to https://people.ece.cornell.edu/land/courses/ece4760/labs/s2021/Boids/Boids.html#Pseudocode
     float xpos_avg = 0.0, ypos_avg = 0.0, xvel_avg = 0.0, yvel_avg = 0.0, close_dx = 0.0, close_dy = 0.0;
-    // vec2 pos_avg = vec2(0.0);
-    // vec2 vel_avg = vec2(0.0);
-    // vec2 close_d = vec2(0.0);
     int neighboring_boids = 0;
 
-    bool top = false;
-    bool bottom = false;
-    bool left = false;
-    bool right = false;
-
     uint gridIndex = boid.gridIndex;
-    if (gridIndex < gridSize) top = true;
-    if (gridIndex >= gridSize * (gridSize - 1)) bottom = true;
-    if (gridIndex % gridSize == 0) left = true;
-    if (gridIndex % gridSize == gridSize - 1) right = true;
 
-    int startIndex = prefixSums[boid.gridIndex];
-    int endIndex = prefixSums[boid.gridIndex + 1];
+    uint gridRow = gridIndex / gridSize;
+    uint gridCol = gridIndex % gridSize;
 
-    for ( int i = startIndex; i < endIndex; i++) {
-        // Same boid
-        if (i == gid) continue;
+    // Loop through the 3x3 grid cells
+    for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
+        for (int colOffset = -1; colOffset <= 1; colOffset++) {
+            int neighborRow = int(gridRow) + rowOffset;
+            int neighborCol = int(gridCol) + colOffset;
 
-        BoidData other = boids[i];
-        float dx = boid.pos.x - other.pos.x;
-        float dy = boid.pos.y - other.pos.y;
+            // Skip out-of-bounds neighbors
+            if (neighborRow < 0 || neighborRow >= int(gridSize) || neighborCol < 0 || neighborCol >= int(gridSize)) {
+                continue;
+            }
 
-        // Outside of visual range
-        if ((abs(dx) > visualRange) || (abs(dy) > visualRange)) continue;
+            // Calculate the neighboring cell's grid index
+            uint neighborGridIndex = uint(neighborRow) * gridSize + uint(neighborCol);
 
-        float squared_distance = dx*dx + dy*dy;
+            int startIndex = prefixSums[neighborGridIndex];
+            int endIndex = prefixSums[neighborGridIndex + 1];
 
-        if (squared_distance < (protectedRange * protectedRange)) {
-            close_dx += boid.pos.x - other.pos.x;
-            close_dy += boid.pos.y - other.pos.y;
-        }
-        else if (squared_distance < (visualRange * visualRange)) {
-            // Add other boid's x/y-coord and x/y vel to accumulator variables
-            xpos_avg += other.pos.x;
-            ypos_avg += other.pos.y;
-            xvel_avg += other.vel.x;
-            yvel_avg += other.vel.y;
+            for (int i = startIndex; i < endIndex; i++) {
+                if (i == gid) continue;
 
-            // Increment number of boids within visual range
-            neighboring_boids += 1;
+                BoidData other = boids[i];
+                float dx = boid.pos.x - other.pos.x;
+                float dy = boid.pos.y - other.pos.y;
+
+                // Outside of visual range
+                if ((abs(dx) > visualRange) || (abs(dy) > visualRange)) continue;
+
+                float squared_distance = dx * dx + dy * dy;
+
+                if (squared_distance < (protectedRange * protectedRange)) {
+                    close_dx += boid.pos.x - other.pos.x;
+                    close_dy += boid.pos.y - other.pos.y;
+                } else if (squared_distance < (visualRange * visualRange)) {
+                    // Add other boid's x/y-coord and x/y vel to accumulator variables
+                    xpos_avg += other.pos.x;
+                    ypos_avg += other.pos.y;
+                    xvel_avg += other.vel.x;
+                    yvel_avg += other.vel.y;
+
+                    // Increment number of boids within visual range
+                    neighboring_boids += 1;
+                }
+            }
         }
     }
 
     if (neighboring_boids > 0) {
         // Divide accumulator variables by number of boids in visual range
-        xpos_avg = xpos_avg/neighboring_boids;
-        ypos_avg = ypos_avg/neighboring_boids;
-        xvel_avg = xvel_avg/neighboring_boids;
-        yvel_avg = yvel_avg/neighboring_boids;
+        xpos_avg = xpos_avg / neighboring_boids;
+        ypos_avg = ypos_avg / neighboring_boids;
+        xvel_avg = xvel_avg / neighboring_boids;
+        yvel_avg = yvel_avg / neighboring_boids;
 
         // Add the centering/matching contributions to velocity
-        boid.vel.x = (boid.vel.x + 
-                   (xpos_avg - boid.pos.x)*centeringFactor + 
-                   (xvel_avg - boid.vel.x)*matchingFactor);
+        boid.vel.x = (boid.vel.x +
+                      (xpos_avg - boid.pos.x) * centeringFactor +
+                      (xvel_avg - boid.vel.x) * matchingFactor);
 
-        boid.vel.y = (boid.vel.y + 
-                   (ypos_avg - boid.pos.y)*centeringFactor + 
-                   (yvel_avg - boid.vel.y)*matchingFactor);
+        boid.vel.y = (boid.vel.y +
+                      (ypos_avg - boid.pos.y) * centeringFactor +
+                      (yvel_avg - boid.vel.y) * matchingFactor);
     }
 
     // Add the avoidance contribution to velocity
-    boid.vel.x = boid.vel.x + (close_dx*avoidFactor);
-    boid.vel.y = boid.vel.y + (close_dy*avoidFactor);
+    boid.vel.x = boid.vel.x + (close_dx * avoidFactor);
+    boid.vel.y = boid.vel.y + (close_dy * avoidFactor);
 
     // If the boid is near an edge, make it turn by turnfactor
-    // Top border
     if (boid.pos.y > (1.0 - borderMargin))
         boid.vel.y = boid.vel.y - turnFactor;
-    // Right border
     if (boid.pos.x > (1.0 - borderMargin))
         boid.vel.x = boid.vel.x - turnFactor;
-    // Left border
     if (boid.pos.x < (-1.0 + borderMargin))
         boid.vel.x = boid.vel.x + turnFactor;
-    // Bottom border
     if (boid.pos.y < (-1.0 + borderMargin))
         boid.vel.y = boid.vel.y + turnFactor;
-        
-    float speed = sqrt(boid.vel.x*boid.vel.x + boid.vel.y*boid.vel.y);
+
+    float speed = sqrt(boid.vel.x * boid.vel.x + boid.vel.y * boid.vel.y);
 
     // Enforce min and max speeds
     if (speed < minSpeed) {
@@ -177,21 +175,8 @@ void main() {
         boid.vel = boid.vel * maxSpeed / speed;
     }
 
-    // boid.vel = boid.vel * (maxSpeed + minSpeed) / (2 * speed);
-
     // Update boid's position
-    
     boid.pos = boid.pos + boid.vel * deltaTime;
-
-    // // Check for collisions with the walls and reverse velection if necessary
-    // if (boid.pos.x < -bounds.x || boid.pos.x > bounds.x) {
-    //     boid.vel.x *= -1.0; // Reverse velection along the x-axis
-    //     boid.pos.x = clamp(boid.pos.x, -bounds.x, bounds.x); // Keep the boid within bounds
-    // }
-    // if (boid.pos.y < -bounds.y || boid.pos.y > bounds.y) {
-    //     boid.vel.y *= -1.0; // Reverse velection along the y-axis
-    //     boid.pos.y = clamp(boid.pos.y, -bounds.y, bounds.y); // Keep the boid within bounds
-    // }
 
     boids[gid] = boid;
 }
