@@ -18,7 +18,6 @@ layout(std430, binding = 5) buffer BucketSizeBuffer {
 };
 
 uniform int gridSize;
-float gridCellSize = 1.0;
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
@@ -27,10 +26,12 @@ void main() {
     if (gid >= boids.length()) return;
 
     BoidData boid = boids[gid];
+    boid.pos.y = boid.pos.y * -1.0;
+
     boid.pos = (boid.pos + vec2(1.0)) * vec2(0.5); // Normalize position to [0, 1]
     // Calculate grid cell index
-    uint gridPosx = uint(floor(boids[gid].pos.x * gridSize));
-    uint gridPosy = uint(floor(boids[gid].pos.y * gridSize));
+    uint gridPosx = uint(floor(boid.pos.x * gridSize));
+    uint gridPosy = uint(floor(boid.pos.y * gridSize));
     uint cellIndex = gridPosy * gridSize + gridPosx;
 
     // Increment the bucket size for the corresponding cell

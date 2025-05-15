@@ -37,6 +37,8 @@ int windowWidth, windowHeight;
 // Mouse input
 ivec2 g_prevMouseCoords = { -1, -1 };
 bool g_isMouseDragging = false;
+bool followMouse = false;
+ivec2 mousePos = { -1, -1 };
 
 ///////////////////////////////////////////////////////////////////////////////
 // Shader programs
@@ -77,8 +79,8 @@ float matchingFactor = 0.05;
 float avoidFactor = 0.2;
 float borderMargin = 0.1;
 float turnFactor = 0.35;
-float minSpeed = 0.2;
-float maxSpeed = 0.3;
+float minSpeed = 0.6;
+float maxSpeed = 0.7;
 float randFactor = 0.05f;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -175,6 +177,9 @@ void updateGrid() {
     // Calculate prefix sum on the CPU
     calculatePrefixSum();
 
+	for (int i = 0; i < NUM_BOIDS; i++) {
+		printf("Boid %d: (%.2f, %.2f) -> %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].cellIndex);
+	}
 	for (int i = 0; i < gridSize * gridSize; i++) {
 		if (i != 0 && (i) % gridSize == 0) printf("\n");
 		printf("%d ", bucketSizes[i]);
@@ -213,6 +218,25 @@ void updateBoidVertices()
 
 void updateBoidPositions(float deltaTime, bool use_GPU)
 {
+	if (followMouse)
+	{
+        // Convert mouse position to normalized device coordinates (NDC)
+        vec2 mouseNDC = vec2(
+            (2.0f * mousePos.x) / windowWidth - 1.0f,
+            1.0f - (2.0f * mousePos.y) / windowHeight);
+
+		printf("%d, %d \n", mousePos.x, mousePos.y);
+        for (int i = 0; i < NUM_BOIDS; i++)
+        {
+            // Move boids toward the mouse position
+            vec2 direction = normalize(mouseNDC - boids[i].position);
+            boids[i].velocity = direction * maxSpeed;
+            boids[i].position += boids[i].velocity * deltaTime;
+        }
+		updateBoidVertices();
+		return;
+    }
+
 	if (use_GPU) {
 		glUseProgram(computeShaderProgram);
 
@@ -494,36 +518,17 @@ bool handleEvents(void)
 			{
 				labhelper::showGUI();
 			}
+		 
 		}
-		if(event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT
-		   && (!labhelper::isGUIvisible() || !ImGui::GetIO().WantCaptureMouse))
+		
+		if (event.type == SDL_MOUSEMOTION)
 		{
-			g_isMouseDragging = true;
-			int x;
-			int y;
-			SDL_GetMouseState(&x, &y);
-			g_prevMouseCoords.x = x;
-			g_prevMouseCoords.y = y;
+			mousePos.x = event.motion.x;
+			mousePos.y = event.motion.y;
 		}
-
-		if(!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT)))
-		{
-			g_isMouseDragging = false;
-		}
-
-		if(event.type == SDL_MOUSEMOTION && g_isMouseDragging)
-		{
-			// More info at https://wiki.libsdl.org/SDL_MouseMotionEvent
-		}
+		
 	}
-
-	// check keyboard state (which keys are still pressed)
-	const uint8_t* state = SDL_GetKeyboardState(nullptr);
-
-	if(state[SDL_SCANCODE_W])
-	{
-		// cameraPosition += cameraSpeed * deltaTime * cameravelocity;
-	}
+	
 	return quitEvent;
 }
 
@@ -539,7 +544,11 @@ void gui()
 	// ----------------------------------------------------------
 
 	ImGui::Text("Blending parameters:");
-	ImGui::RadioButton("Additive blending", &additiveBlending);
+	ImGui::Checkbox("Additive blending", &additiveBlending);
+
+	ImGui::Text("Mouse control:");
+	ImGui::Checkbox("Follow mouse", &followMouse);
+
 	ImGui::Text("Boid parameters:");
 	ImGui::SliderFloat("visualRange", &visualRange, 0.0f, 2.0f);
 	ImGui::SliderFloat("protectedRange", &protectedRange, 0.0f, 1.0f);
