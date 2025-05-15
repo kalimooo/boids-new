@@ -88,6 +88,17 @@ void main() {
     // vec2 close_d = vec2(0.0);
     int neighboring_boids = 0;
 
+    bool top = false;
+    bool bottom = false;
+    bool left = false;
+    bool right = false;
+
+    uint gridIndex = boid.gridIndex;
+    if (gridIndex < gridSize) top = true;
+    if (gridIndex >= gridSize * (gridSize - 1)) bottom = true;
+    if (gridIndex % gridSize == 0) left = true;
+    if (gridIndex % gridSize == gridSize - 1) right = true;
+
     int startIndex = prefixSums[boid.gridIndex];
     int endIndex = prefixSums[boid.gridIndex + 1];
 
