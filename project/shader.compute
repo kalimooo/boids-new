@@ -5,8 +5,8 @@
 struct BoidData {
     vec2 pos;
     vec2 vel;
-    uint cellIndex;
-    uint padding;
+    uint bucketIndex;
+    uint gridIndex;
 };
 
 layout( std430, binding=3 ) buffer BoidBuffer
