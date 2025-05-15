@@ -126,6 +126,7 @@ void initGrid() {
 	// printf("\n\n");
 }
 
+// TODO Maybe do this in a compute shader as well
 void calculatePrefixSum() {
     prefixSums[0] = 0;
     for (int i = 1; i < gridSize * gridSize; ++i) {
@@ -135,7 +136,6 @@ void calculatePrefixSum() {
     // Update the GPU buffer with the new prefix sums
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, prefixSumSSBO);
 
-	// PROBLEM WITH THIS ONE I THINK
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint) * gridSize * gridSize, prefixSums);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
