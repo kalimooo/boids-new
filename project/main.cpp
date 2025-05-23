@@ -65,7 +65,7 @@ struct particle {
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_particleS = 2;
+const int NUM_particleS = 200000;
 
 particle* particles;
 
