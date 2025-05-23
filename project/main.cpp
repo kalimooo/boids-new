@@ -65,7 +65,7 @@ struct particle {
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_particleS = 200000;
+const int NUM_particleS = 5000;
 
 particle* particles;
 
@@ -237,7 +237,7 @@ void initializeparticles()
         // Set the velocity to point away from the center (is already normalized due to being on identity circle)
         particles[i].velocity = vec2(cos(angle), sin(angle));
 		
-		particles[i].position += vec2(0.1f) * particles[i].velocity;
+		particles[i].position += vec2((float) i * 0.5 / (float) NUM_particleS) * particles[i].velocity;
     }
 }
 
