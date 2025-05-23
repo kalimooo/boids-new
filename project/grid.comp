@@ -33,6 +33,9 @@ void main() {
     // Calculate grid cell index
     uint gridPosx = uint(floor(particle.pos.x * gridSize));
     uint gridPosy = uint(floor(particle.pos.y * gridSize));
+
+    if (gridPosx >= gridSize) gridPosx = gridSize - 1;
+    if (gridPosy >= gridSize) gridPosy = gridSize - 1;
     uint gridIndex = gridPosy * gridSize + gridPosx;
 
     // Increment the bucket size for the corresponding cell

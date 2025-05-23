@@ -65,7 +65,7 @@ struct particle {
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_particleS = 5;
+const int NUM_particleS = 2;
 
 particle* particles;
 
@@ -175,12 +175,6 @@ void updateGrid() {
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
 		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint) * gridSize * gridSize, bucketSizes);
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-		// for (int i = 0; i < gridSize * gridSize; i++) {
-		// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
-		// 	printf("%d ", bucketSizes[i]);
-		// }
-		// printf("\n\n");
 		
 		// Dispatch compute shader to calculate bucket sizes
 		glUseProgram(gridShaderProgram);
@@ -215,15 +209,15 @@ void updateGrid() {
 		reindexparticles();
 	}
 
-	// for (int i = 0; i < NUM_particleS; i++) {
-	// 	printf("particle %d: (%.2f, %.2f) -> %d, %d\n", i, particles[i].position.x, particles[i].position.y, particles[i].gridIndex, particles[i].bucketIndex);
-	// }
-	// printf("BucketSizes:\n");
-	// for (int i = 0; i < gridSize * gridSize; i++) {
-	// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
-	// 	printf("%d ", bucketSizes[i]);
-	// }
-	// printf("\n\n");
+	for (int i = 0; i < NUM_particleS; i++) {
+		printf("particle %d: (%.2f, %.2f) -> %d, %d\n", i, particles[i].position.x, particles[i].position.y, particles[i].gridIndex, particles[i].bucketIndex);
+	}
+	printf("BucketSizes:\n");
+	for (int i = 0; i < gridSize * gridSize; i++) {
+		if (i != 0 && (i) % gridSize == 0) printf("\n");
+		printf("%d ", bucketSizes[i]);
+	}
+	printf("\n\n");
 }
 
 void initializeparticles()
