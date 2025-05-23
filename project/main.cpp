@@ -88,7 +88,7 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const GLint gridSize = 2;
+const GLint gridSize = 32;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
@@ -209,15 +209,15 @@ void updateGrid() {
 		reindexparticles();
 	}
 
-	for (int i = 0; i < NUM_particleS; i++) {
-		printf("particle %d: (%.2f, %.2f) -> %d, %d\n", i, particles[i].position.x, particles[i].position.y, particles[i].gridIndex, particles[i].bucketIndex);
-	}
-	printf("BucketSizes:\n");
-	for (int i = 0; i < gridSize * gridSize; i++) {
-		if (i != 0 && (i) % gridSize == 0) printf("\n");
-		printf("%d ", bucketSizes[i]);
-	}
-	printf("\n\n");
+	// for (int i = 0; i < NUM_particleS; i++) {
+	// 	printf("particle %d: (%.2f, %.2f) -> %d, %d\n", i, particles[i].position.x, particles[i].position.y, particles[i].gridIndex, particles[i].bucketIndex);
+	// }
+	// printf("BucketSizes:\n");
+	// for (int i = 0; i < gridSize * gridSize; i++) {
+	// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
+	// 	printf("%d ", bucketSizes[i]);
+	// }
+	// printf("\n\n");
 }
 
 void initializeparticles()
