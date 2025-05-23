@@ -165,43 +165,53 @@ void reindexBoids() {
 }
 
 void updateGrid() {
-    // Reset bucketSizes buffer on the GPU
-    memset(bucketSizes, 0, sizeof(GLuint) * gridSize * gridSize);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint) * gridSize * gridSize, bucketSizes);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	labhelper::perf::Scope s( "Update Grid" );
+	{
+		labhelper::perf::Scope s( "Calculate bucket sizes" );
+		// Reset bucketSizes buffer on the GPU
+		memset(bucketSizes, 0, sizeof(GLuint) * gridSize * gridSize);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
+		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint) * gridSize * gridSize, bucketSizes);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-	// for (int i = 0; i < gridSize * gridSize; i++) {
-	// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
-	// 	printf("%d ", bucketSizes[i]);
-	// }
-	// printf("\n\n");
-	
-    // Dispatch compute shader to calculate bucket sizes
-    glUseProgram(gridShaderProgram);
-    labhelper::setUniformSlow(gridShaderProgram, "gridSize", gridSize);
-    // labhelper::setUniformSlow(gridShaderProgram, "gridCellSize", 1.0f / gridSize);
-    glDispatchCompute(NUM_BOIDS, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		// for (int i = 0; i < gridSize * gridSize; i++) {
+		// 	if (i != 0 && (i) % gridSize == 0) printf("\n");
+		// 	printf("%d ", bucketSizes[i]);
+		// }
+		// printf("\n\n");
+		
+		// Dispatch compute shader to calculate bucket sizes
+		glUseProgram(gridShaderProgram);
+		labhelper::setUniformSlow(gridShaderProgram, "gridSize", gridSize);
+		// labhelper::setUniformSlow(gridShaderProgram, "gridCellSize", 1.0f / gridSize);
+		glDispatchCompute(NUM_BOIDS, 1, 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
-    // Map bucketSizes buffer back to CPU
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
-    bucketSizes = (GLuint*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(uint) * gridSize * gridSize, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
-    if (bucketSizes == nullptr) {
-        printf("Error: Failed to map bucketSizes buffer.\n");
-        return;
-    }
+		// Map bucketSizes buffer back to CPU
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
+		bucketSizes = (GLuint*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(uint) * gridSize * gridSize, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
+		if (bucketSizes == nullptr) {
+			printf("Error: Failed to map bucketSizes buffer.\n");
+			return;
+		}
 
-	// Unmap the buffer
-    if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
-        printf("Error: Failed to unmap bucketSizes buffer.\n");
-        return;
-    }
+		// Unmap the buffer
+		if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
+			printf("Error: Failed to unmap bucketSizes buffer.\n");
+			return;
+		}
+	}
 
     // Calculate prefix sum on the CPU
-    calculatePrefixSum();
+	{
+		labhelper::perf::Scope s( "Calculate prefix sum" );
+		calculatePrefixSum();
+	}
 
-	reindexBoids();
+	{
+		labhelper::perf::Scope s( "Reindex boids" );
+		reindexBoids();
+	}
 
 	// for (int i = 0; i < NUM_BOIDS; i++) {
 	// 	printf("Boid %d: (%.2f, %.2f) -> %d, %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].gridIndex, boids[i].bucketIndex);
@@ -238,88 +248,91 @@ void initializeBoids()
 void updateBoidVertices()
 {
 	glUseProgram(shaderProgram);
-    glBindBuffer(GL_ARRAY_BUFFER, posVBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(boid) * NUM_BOIDS, boids); // Update the VBO with current boid data
+	glBindBuffer(GL_ARRAY_BUFFER, posVBO);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(boid) * NUM_BOIDS, boids); // Update the VBO with current boid data
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void updateBoidPositions(float deltaTime, bool use_GPU)
 {
-	if (followMouse)
-	{
-        // Convert mouse position to normalized device coordinates (NDC)
-        vec2 mouseNDC = vec2(
-            (2.0f * mousePos.x) / windowWidth - 1.0f,
-            1.0f - (2.0f * mousePos.y) / windowHeight);
+	{	
+		labhelper::perf::Scope s( "Update Boids" );
+		if (followMouse)
+		{
+			// Convert mouse position to normalized device coordinates (NDC)
+			vec2 mouseNDC = vec2(
+				(2.0f * mousePos.x) / windowWidth - 1.0f,
+				1.0f - (2.0f * mousePos.y) / windowHeight);
 
-		printf("%d, %d \n", mousePos.x, mousePos.y);
-        for (int i = 0; i < NUM_BOIDS; i++)
-        {
-            // Move boids toward the mouse position
-            vec2 direction = normalize(mouseNDC - boids[i].position);
-            boids[i].velocity = direction * maxSpeed;
-            boids[i].position += boids[i].velocity * deltaTime;
-        }
+			printf("%d, %d \n", mousePos.x, mousePos.y);
+			for (int i = 0; i < NUM_BOIDS; i++)
+			{
+				// Move boids toward the mouse position
+				vec2 direction = normalize(mouseNDC - boids[i].position);
+				boids[i].velocity = direction * maxSpeed;
+				boids[i].position += boids[i].velocity * deltaTime;
+			}
+			updateBoidVertices();
+			return;
+		}
+
+		if (use_GPU) {
+			glUseProgram(computeShaderProgram);
+
+			labhelper::setUniformSlow(computeShaderProgram, "deltaTime", deltaTime);
+			labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
+			labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
+			labhelper::setUniformSlow(computeShaderProgram, "centeringFactor", centeringFactor);
+			labhelper::setUniformSlow(computeShaderProgram, "matchingFactor", matchingFactor);
+			labhelper::setUniformSlow(computeShaderProgram, "avoidFactor", avoidFactor);
+			labhelper::setUniformSlow(computeShaderProgram, "borderMargin", borderMargin);
+			labhelper::setUniformSlow(computeShaderProgram, "turnFactor", turnFactor);
+			labhelper::setUniformSlow(computeShaderProgram, "minSpeed", minSpeed);
+			labhelper::setUniformSlow(computeShaderProgram, "maxSpeed", maxSpeed);
+			labhelper::setUniformSlow(computeShaderProgram, "time", currentTime);
+			labhelper::setUniformSlow(computeShaderProgram, "randFactor", randFactor);
+			labhelper::setUniformSlow(computeShaderProgram, "gridSize", gridSize);
+
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
+
+			GLint bufMask = GL_MAP_WRITE_BIT;
+
+			// printf("Positions before shader: ");
+			// for (int i = 0; i < NUM_BOIDS; i++) {
+			// 	printf("(%.2f, %.2f), ", boids[i].position.x, boids[i].position.y);
+			// }
+			// printf("\n");
+			
+			glDispatchCompute(NUM_BOIDS, 1, 1);
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
+			boids = (boid*) glMapBufferRange( GL_SHADER_STORAGE_BUFFER, 0, sizeof(boid) * NUM_BOIDS, bufMask);
+			if (boids == nullptr) {
+				printf("Error: Failed to map buffer.\n");
+				return;
+			}
+			// printf("Positions after shader: ");
+			// for (int i = 0; i < NUM_BOIDS; i++) {
+			// 	printf("(%.2f, %.2f), ", boids[i].position.x, boids[i].position.y);			
+			// }
+			// printf("\n\n");
+			
+			if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
+				printf("Error: Failed to unmap buffer.\n");
+				return;
+			}
+		}
+		else {
+			for (int i = 0; i < NUM_BOIDS; i++) {
+				boids[i].position += vec2(0.01f) * deltaTime;
+			}
+		}
+
 		updateBoidVertices();
-		return;
-    }
-
-	if (use_GPU) {
-		glUseProgram(computeShaderProgram);
-
-		labhelper::setUniformSlow(computeShaderProgram, "deltaTime", deltaTime);
-		labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
-		labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
-		labhelper::setUniformSlow(computeShaderProgram, "centeringFactor", centeringFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "matchingFactor", matchingFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "avoidFactor", avoidFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "borderMargin", borderMargin);
-		labhelper::setUniformSlow(computeShaderProgram, "turnFactor", turnFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "minSpeed", minSpeed);
-		labhelper::setUniformSlow(computeShaderProgram, "maxSpeed", maxSpeed);
-		labhelper::setUniformSlow(computeShaderProgram, "time", currentTime);
-		labhelper::setUniformSlow(computeShaderProgram, "randFactor", randFactor);
-		labhelper::setUniformSlow(computeShaderProgram, "gridSize", gridSize);
-
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
-
-		GLint bufMask = GL_MAP_WRITE_BIT;
-
-		// printf("Positions before shader: ");
-		// for (int i = 0; i < NUM_BOIDS; i++) {
-		// 	printf("(%.2f, %.2f), ", boids[i].position.x, boids[i].position.y);
-		// }
-		// printf("\n");
-		
-		glDispatchCompute(NUM_BOIDS, 1, 1);
-		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
-
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
-		boids = (boid*) glMapBufferRange( GL_SHADER_STORAGE_BUFFER, 0, sizeof(boid) * NUM_BOIDS, bufMask);
-		if (boids == nullptr) {
-			printf("Error: Failed to map buffer.\n");
-			return;
-		}
-		// printf("Positions after shader: ");
-		// for (int i = 0; i < NUM_BOIDS; i++) {
-		// 	printf("(%.2f, %.2f), ", boids[i].position.x, boids[i].position.y);			
-		// }
-		// printf("\n\n");
-		
-		if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
-			printf("Error: Failed to unmap buffer.\n");
-			return;
-		}
 	}
-	else {
-		for (int i = 0; i < NUM_BOIDS; i++) {
-			boids[i].position += vec2(0.01f) * deltaTime;
-		}
-	}
-
-	updateBoidVertices();
 }
 
 void loadShaders(bool is_reload)
@@ -498,40 +511,42 @@ void display(void)
 		glDrawArrays(GL_POINTS, 0, NUM_BOIDS);
 		glBindVertexArray(0);
 	}
+	{
+		labhelper::perf::Scope s( "Blending" );
+		// Blend new scene with accumulated trail
+		glBindFramebuffer(GL_FRAMEBUFFER, oldFB.framebufferId);
+		glViewport(0, 0, oldFB.width, oldFB.height);
 
-	// Blend new scene with accumulated trail
-	glBindFramebuffer(GL_FRAMEBUFFER, oldFB.framebufferId);
-	glViewport(0, 0, oldFB.width, oldFB.height);
+		glUseProgram(blendProgram);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, currentFB.colorTextureTargets[0]);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, oldFB.colorTextureTargets[0]);
 
-	glUseProgram(blendProgram);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, currentFB.colorTextureTargets[0]);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, oldFB.colorTextureTargets[0]);
+		if (additiveBlending) {
+			labhelper::setUniformSlow(blendProgram, "blendFactor", 0.95f);
+			labhelper::setUniformSlow(blendProgram, "decayFactor", 0.8f);
+		} else {
+			labhelper::setUniformSlow(blendProgram, "blendFactor", 0.85f);
+			labhelper::setUniformSlow(blendProgram, "decayFactor", 1.0f);	
+		}
+		labhelper::setUniformSlow(blendProgram, "additiveBlending", additiveBlending);
+		
+		labhelper::drawFullScreenQuad();
 
-	if (additiveBlending) {
-		labhelper::setUniformSlow(blendProgram, "blendFactor", 0.95f);
-		labhelper::setUniformSlow(blendProgram, "decayFactor", 0.8f);
-	} else {
-		labhelper::setUniformSlow(blendProgram, "blendFactor", 0.85f);
-		labhelper::setUniformSlow(blendProgram, "decayFactor", 1.0f);	
+		// Render the blended scene to default
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, windowWidth, windowHeight);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glUseProgram(blendProgram);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, oldFB.colorTextureTargets[0]);
+
+		labhelper::setUniformSlow(blendProgram, "blendFactor", 0.0f);
+		labhelper::setUniformSlow(blendProgram, "decayFactor", 1.0f);
+		labhelper::drawFullScreenQuad();
 	}
-	labhelper::setUniformSlow(blendProgram, "additiveBlending", additiveBlending);
-	
-	labhelper::drawFullScreenQuad();
-
-	// Render the blended scene to default
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, windowWidth, windowHeight);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glUseProgram(blendProgram);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, oldFB.colorTextureTargets[0]);
-
-	labhelper::setUniformSlow(blendProgram, "blendFactor", 0.0f);
-	labhelper::setUniformSlow(blendProgram, "decayFactor", 1.0f);
-	labhelper::drawFullScreenQuad();
 }
 
 
