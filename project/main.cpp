@@ -63,7 +63,7 @@ struct boid {
 GLuint posVBO;
 GLuint boidSSBO;
 
-const int NUM_BOIDS = 100;
+const int NUM_BOIDS = 100000;
 
 boid* boids;
 
