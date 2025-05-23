@@ -36,7 +36,20 @@ void main() {
 
     ParticleData particle = particles[gid];
     
-    particle.pos.y += -1.0 * deltaTime;
+    // Apply gravity
+    particle.acc.y += gravity * deltaTime;
+    particle.vel += particle.acc * deltaTime;
+    particle.pos += particle.vel * deltaTime;
 
+    // Bounce off the walls
+    if (particle.pos.x < 0.0 || particle.pos.x > 1.0) {
+        particle.vel.x = -particle.vel.x;
+        particle.pos.x = clamp(particle.pos.x, 0.0, 1.0);
+    }
+    if (particle.pos.y < 0.0 || particle.pos.y > 1.0) {
+        particle.vel.y = -particle.vel.y;
+        particle.pos.y = clamp(particle.pos.y, 0.0, 1.0);
+    }
+    
     particles[gid] = particle;
 }
