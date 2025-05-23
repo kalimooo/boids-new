@@ -86,7 +86,7 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const GLint gridSize = 4;
+const GLint gridSize = 16;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
@@ -343,7 +343,7 @@ void loadShaders(bool is_reload)
 		shaderProgram = shader;
 	}
 
-	shader = labhelper::loadComputeShaderProgram("../project/shader.compute", is_reload);
+	shader = labhelper::loadComputeShaderProgram("../project/boid.comp", is_reload);
 	if(shader != 0)
 	{
 		computeShaderProgram = shader;
