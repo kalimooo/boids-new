@@ -2,40 +2,41 @@
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-struct BoidData {
+struct ParticleData {
     vec2 pos;
     vec2 vel;
+    vec2 acc;
     uint bucketIndex;
     uint gridIndex;
 };
 
 // Input buffers
-layout(std430, binding = 3) readonly buffer Boids {
-    BoidData boids[];
+layout(std430, binding = 3) readonly buffer ParticleBuffer {
+    ParticleData particles[];
 };
 
-layout(std430, binding = 4) readonly buffer PrefixSums {
+layout(std430, binding = 4) readonly buffer PrefixSumsBuffer {
     uint prefixSums[];
 };
 
-layout(std430, binding = 5) readonly buffer BucketSizes {
+layout(std430, binding = 5) readonly buffer BucketSizesBuffer {
     uint bucketSizes[];
 };
 
 // Output buffer
-layout(std430, binding = 6) writeonly buffer ReorderedBoids {
-    BoidData reorderedBoids[];
+layout(std430, binding = 6) writeonly buffer ReorderedParticlesBuffer {
+    ParticleData reorderedParticles[];
 };
 
 void main() {
     uint gid = gl_GlobalInvocationID.x;
-    if (gid >= boids.length()) return;
+    if (gid >= particles.length()) return;
 
-    BoidData boid = boids[gid];
+    ParticleData particle = particles[gid];
 
-    uint baseIndex = prefixSums[boid.gridIndex];
-    uint bucketIndex = boid.bucketIndex;
+    uint baseIndex = prefixSums[particle.gridIndex];
+    uint bucketIndex = particle.bucketIndex;
 
-    // Place the boid in the reordered array
-    reorderedBoids[baseIndex + bucketIndex] = boid;
+    // Place the particle in the reordered array
+    reorderedParticles[baseIndex + bucketIndex] = particle;
 }

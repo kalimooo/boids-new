@@ -51,21 +51,22 @@ GLuint shaderProgram;       // Shader for rendering the final image
 GLuint vao;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Data for the boids
+// Data for the particles
 ///////////////////////////////////////////////////////////////////////////////
-struct boid {
+struct particle {
 	vec2 position;
 	vec2 velocity;
+	vec2 acceleration;
 	uint bucketIndex;
 	uint gridIndex;
 };
 
 GLuint posVBO;
-GLuint boidSSBO;
+GLuint particleSSBO;
 
-const int NUM_BOIDS = 100000;
+const int NUM_particleS = 100000;
 
-boid* boids;
+particle* particles;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Compute Shader stuff
@@ -92,7 +93,7 @@ GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
 GLuint* bucketSizes = nullptr;
 
-GLuint reorderedBoidsSSBO;
+GLuint reorderedparticlesSSBO;
 
 GLuint gridShaderProgram;
 GLuint prefixSumShaderProgram;
@@ -117,7 +118,7 @@ void initGrid() {
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
 	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint) * gridSize * gridSize, bucketSizes,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, particleSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -150,18 +151,18 @@ void calculatePrefixSum() {
 	// printf("\n\n");
 }
 
-void reindexBoids() {
+void reindexparticles() {
 	glUseProgram(reindexShaderProgram);
 
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, particleSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, reorderedBoidsSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, reorderedparticlesSSBO);
 
-	glDispatchCompute(NUM_BOIDS, 1, 1);
+	glDispatchCompute(NUM_particleS, 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 	
-	glCopyNamedBufferSubData(reorderedBoidsSSBO, boidSSBO, 0, 0, sizeof(boid) * NUM_BOIDS);
+	glCopyNamedBufferSubData(reorderedparticlesSSBO, particleSSBO, 0, 0, sizeof(particle) * NUM_particleS);
 }
 
 void updateGrid() {
@@ -184,7 +185,7 @@ void updateGrid() {
 		glUseProgram(gridShaderProgram);
 		labhelper::setUniformSlow(gridShaderProgram, "gridSize", gridSize);
 		// labhelper::setUniformSlow(gridShaderProgram, "gridCellSize", 1.0f / gridSize);
-		glDispatchCompute(NUM_BOIDS, 1, 1);
+		glDispatchCompute(NUM_particleS, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 		// Map bucketSizes buffer back to CPU
@@ -209,12 +210,12 @@ void updateGrid() {
 	}
 
 	{
-		labhelper::perf::Scope s( "Reindex boids" );
-		reindexBoids();
+		labhelper::perf::Scope s( "Reindex particles" );
+		reindexparticles();
 	}
 
-	// for (int i = 0; i < NUM_BOIDS; i++) {
-	// 	printf("Boid %d: (%.2f, %.2f) -> %d, %d\n", i, boids[i].position.x, boids[i].position.y, boids[i].gridIndex, boids[i].bucketIndex);
+	// for (int i = 0; i < NUM_particleS; i++) {
+	// 	printf("particle %d: (%.2f, %.2f) -> %d, %d\n", i, particles[i].position.x, particles[i].position.y, particles[i].gridIndex, particles[i].bucketIndex);
 	// }
 	// printf("BucketSizes:\n");
 	// for (int i = 0; i < gridSize * gridSize; i++) {
@@ -224,39 +225,39 @@ void updateGrid() {
 	// printf("\n\n");
 }
 
-void initializeBoids()
+void initializeparticles()
 {
-    // Calculate the angular spacing between boids
-    float angleStep = 2.0f * M_PI / NUM_BOIDS;
-	boids = new boid[NUM_BOIDS];
+    // Calculate the angular spacing between particles
+    float angleStep = 2.0f * M_PI / NUM_particleS;
+	particles = new particle[NUM_particleS];
 
-    for (int i = 0; i < NUM_BOIDS; ++i)
+    for (int i = 0; i < NUM_particleS; ++i)
     {
-        // Calculate the angle for this boid
+        // Calculate the angle for this particle
         float angle = i * angleStep;
 
 		// Everything spawns in the middle
-		boids[i].position = vec2(0.0f);
+		particles[i].position = vec2(0.0f);
 
         // Set the velocity to point away from the center (is already normalized due to being on identity circle)
-        boids[i].velocity = vec2(cos(angle), sin(angle));
+        particles[i].velocity = vec2(cos(angle), sin(angle));
 		
-		boids[i].position += vec2(0.1f) * boids[i].velocity;
+		particles[i].position += vec2(0.1f) * particles[i].velocity;
     }
 }
 
-void updateBoidVertices()
+void updateparticleVertices()
 {
 	glUseProgram(shaderProgram);
 	glBindBuffer(GL_ARRAY_BUFFER, posVBO);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(boid) * NUM_BOIDS, boids); // Update the VBO with current boid data
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(particle) * NUM_particleS, particles); // Update the VBO with current particle data
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void updateBoidPositions(float deltaTime, bool use_GPU)
+void updateparticlePositions(float deltaTime, bool use_GPU)
 {
 	{	
-		labhelper::perf::Scope s( "Update Boids" );
+		labhelper::perf::Scope s( "Update particles" );
 		if (followMouse)
 		{
 			// Convert mouse position to normalized device coordinates (NDC)
@@ -265,14 +266,14 @@ void updateBoidPositions(float deltaTime, bool use_GPU)
 				1.0f - (2.0f * mousePos.y) / windowHeight);
 
 			printf("%d, %d \n", mousePos.x, mousePos.y);
-			for (int i = 0; i < NUM_BOIDS; i++)
+			for (int i = 0; i < NUM_particleS; i++)
 			{
-				// Move boids toward the mouse position
-				vec2 direction = normalize(mouseNDC - boids[i].position);
-				boids[i].velocity = direction * maxSpeed;
-				boids[i].position += boids[i].velocity * deltaTime;
+				// Move particles toward the mouse position
+				vec2 direction = normalize(mouseNDC - particles[i].position);
+				particles[i].velocity = direction * maxSpeed;
+				particles[i].position += particles[i].velocity * deltaTime;
 			}
-			updateBoidVertices();
+			updateparticleVertices();
 			return;
 		}
 
@@ -280,43 +281,44 @@ void updateBoidPositions(float deltaTime, bool use_GPU)
 			glUseProgram(computeShaderProgram);
 
 			labhelper::setUniformSlow(computeShaderProgram, "deltaTime", deltaTime);
-			labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
-			labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
-			labhelper::setUniformSlow(computeShaderProgram, "centeringFactor", centeringFactor);
-			labhelper::setUniformSlow(computeShaderProgram, "matchingFactor", matchingFactor);
-			labhelper::setUniformSlow(computeShaderProgram, "avoidFactor", avoidFactor);
-			labhelper::setUniformSlow(computeShaderProgram, "borderMargin", borderMargin);
-			labhelper::setUniformSlow(computeShaderProgram, "turnFactor", turnFactor);
-			labhelper::setUniformSlow(computeShaderProgram, "minSpeed", minSpeed);
-			labhelper::setUniformSlow(computeShaderProgram, "maxSpeed", maxSpeed);
 			labhelper::setUniformSlow(computeShaderProgram, "time", currentTime);
-			labhelper::setUniformSlow(computeShaderProgram, "randFactor", randFactor);
 			labhelper::setUniformSlow(computeShaderProgram, "gridSize", gridSize);
 
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+			// labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
+			// labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
+			// labhelper::setUniformSlow(computeShaderProgram, "centeringFactor", centeringFactor);
+			// labhelper::setUniformSlow(computeShaderProgram, "matchingFactor", matchingFactor);
+			// labhelper::setUniformSlow(computeShaderProgram, "avoidFactor", avoidFactor);
+			// labhelper::setUniformSlow(computeShaderProgram, "borderMargin", borderMargin);
+			// labhelper::setUniformSlow(computeShaderProgram, "turnFactor", turnFactor);
+			// labhelper::setUniformSlow(computeShaderProgram, "minSpeed", minSpeed);
+			// labhelper::setUniformSlow(computeShaderProgram, "maxSpeed", maxSpeed);
+			// labhelper::setUniformSlow(computeShaderProgram, "randFactor", randFactor);
+
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleSSBO);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, particleSSBO);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
 
 			GLint bufMask = GL_MAP_WRITE_BIT;
 
 			// printf("Positions before shader: ");
-			// for (int i = 0; i < NUM_BOIDS; i++) {
-			// 	printf("(%.2f, %.2f), ", boids[i].position.x, boids[i].position.y);
+			// for (int i = 0; i < NUM_particleS; i++) {
+			// 	printf("(%.2f, %.2f), ", particles[i].position.x, particles[i].position.y);
 			// }
 			// printf("\n");
 			
-			glDispatchCompute(NUM_BOIDS, 1, 1);
+			glDispatchCompute(NUM_particleS, 1, 1);
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
-			boids = (boid*) glMapBufferRange( GL_SHADER_STORAGE_BUFFER, 0, sizeof(boid) * NUM_BOIDS, bufMask);
-			if (boids == nullptr) {
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleSSBO);
+			particles = (particle*) glMapBufferRange( GL_SHADER_STORAGE_BUFFER, 0, sizeof(particle) * NUM_particleS, bufMask);
+			if (particles == nullptr) {
 				printf("Error: Failed to map buffer.\n");
 				return;
 			}
 			// printf("Positions after shader: ");
-			// for (int i = 0; i < NUM_BOIDS; i++) {
-			// 	printf("(%.2f, %.2f), ", boids[i].position.x, boids[i].position.y);			
+			// for (int i = 0; i < NUM_particleS; i++) {
+			// 	printf("(%.2f, %.2f), ", particles[i].position.x, particles[i].position.y);			
 			// }
 			// printf("\n\n");
 			
@@ -326,12 +328,12 @@ void updateBoidPositions(float deltaTime, bool use_GPU)
 			}
 		}
 		else {
-			for (int i = 0; i < NUM_BOIDS; i++) {
-				boids[i].position += vec2(0.01f) * deltaTime;
+			for (int i = 0; i < NUM_particleS; i++) {
+				particles[i].position += vec2(0.01f) * deltaTime;
 			}
 		}
 
-		updateBoidVertices();
+		updateparticleVertices();
 	}
 }
 
@@ -343,7 +345,13 @@ void loadShaders(bool is_reload)
 		shaderProgram = shader;
 	}
 
-	shader = labhelper::loadComputeShaderProgram("../project/boid.comp", is_reload);
+	// shader = labhelper::loadComputeShaderProgram("../project/particle.comp", is_reload);
+	// if(shader != 0)
+	// {
+	// 	computeShaderProgram = shader;
+	// }
+	
+	shader = labhelper::loadComputeShaderProgram("../project/particle.comp", is_reload);
 	if(shader != 0)
 	{
 		computeShaderProgram = shader;
@@ -386,19 +394,19 @@ void initialize()
 	loadShaders(false);
 
 	
-	initializeBoids();
+	initializeparticles();
 
 	///////////////////////////////////////////////////////////////////////
 	// Generate and bind buffers for graphics pipeline
 	///////////////////////////////////////////////////////////////////////
 	glGenBuffers(1, &posVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, posVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(boid) * NUM_BOIDS, boids, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(particle) * NUM_particleS, particles, GL_DYNAMIC_DRAW);
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(boid), 0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(particle), 0);
 	glEnableVertexAttribArray(0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -408,11 +416,11 @@ void initialize()
 	// Generate and bind buffers for compute shaders
 	///////////////////////////////////////////////////////////////////////
 	// Positions
-	glGenBuffers(1, &boidSSBO);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, boidSSBO);
-	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(boid) * NUM_BOIDS, boids,
+	glGenBuffers(1, &particleSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(particle) * NUM_particleS, particles,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, particleSSBO);
 
 	///////////////////////////////////////////////////////////////////////
 	// Generate and bind buffers for compute shaders
@@ -424,19 +432,19 @@ void initialize()
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, prefixSumSSBO);
 
-	// Reindexed boids
-	glGenBuffers(1, &reorderedBoidsSSBO);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, reorderedBoidsSSBO);
-	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(boid) * NUM_BOIDS, nullptr,
+	// Reindexed particles
+	glGenBuffers(1, &reorderedparticlesSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, reorderedparticlesSSBO);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(particle) * NUM_particleS, nullptr,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_DYNAMIC_STORAGE_BIT);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, reorderedBoidsSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, reorderedparticlesSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	// glGenBuffers(1, &bucketSizesSSBO);
 	// glBindBuffer(GL_SHADER_STORAGE_BUFFER, bucketSizesSSBO);
 	// glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * gridSize * gridSize, bucketSizes,
 	// 				GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-	// glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, boidSSBO);
+	// glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, particleSSBO);
 	// glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
 	// glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 	initGrid();
@@ -508,7 +516,7 @@ void display(void)
 		labhelper::setUniformSlow(shaderProgram, "minSpeed", minSpeed);
 		labhelper::setUniformSlow(shaderProgram, "maxSpeed", maxSpeed);
 		glBindVertexArray(vao);
-		glDrawArrays(GL_POINTS, 0, NUM_BOIDS);
+		glDrawArrays(GL_POINTS, 0, NUM_particleS);
 		glBindVertexArray(0);
 	}
 	{
@@ -607,7 +615,7 @@ void gui()
 	ImGui::Text("Mouse control:");
 	ImGui::Checkbox("Follow mouse", &followMouse);
 
-	ImGui::Text("Boid parameters:");
+	ImGui::Text("particle parameters:");
 	ImGui::SliderFloat("visualRange", &visualRange, 0.0f, 2.0f);
 	ImGui::SliderFloat("protectedRange", &protectedRange, 0.0f, 1.0f);
 	ImGui::SliderFloat("centeringFactor", &centeringFactor, 0.0f, 0.1f);
@@ -650,8 +658,8 @@ int main(int argc, char* argv[])
 		// Inform imgui of new frame
 		labhelper::newFrame( g_window );
 		
-		// Update boids
-		updateBoidPositions(deltaTime, true);
+		// Update particles
+		updateparticlePositions(deltaTime, true);
 
 		updateGrid();
 		

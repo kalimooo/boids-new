@@ -2,15 +2,16 @@
 #extension GL_ARB_compute_shader : enable
 #extension GL_ARB_shader_storage_buffer_object : enable
 
-struct BoidData {
+struct ParticleData {
     vec2 pos;
     vec2 vel;
+    vec2 acc;
     uint bucketIndex;
     uint gridIndex;
 };
 
-layout(std430, binding = 3) buffer BoidBuffer {
-    BoidData boids[];
+layout(std430, binding = 3) buffer ParticleBuffer {
+    ParticleData particles[];
 };
 
 layout(std430, binding = 5) buffer BucketSizeBuffer {
@@ -23,18 +24,18 @@ layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
 void main() {
     uint gid = gl_GlobalInvocationID.x;
-    if (gid >= boids.length()) return;
+    if (gid >= particles.length()) return;
 
-    BoidData boid = boids[gid];
-    boid.pos.y = boid.pos.y * -1.0;
+    ParticleData particle = particles[gid];
+    particle.pos.y = particle.pos.y * -1.0;
 
-    boid.pos = (boid.pos + vec2(1.0)) * vec2(0.5); // Normalize position to [0, 1]
+    particle.pos = (particle.pos + vec2(1.0)) * vec2(0.5); // Normalize position to [0, 1]
     // Calculate grid cell index
-    uint gridPosx = uint(floor(boid.pos.x * gridSize));
-    uint gridPosy = uint(floor(boid.pos.y * gridSize));
+    uint gridPosx = uint(floor(particle.pos.x * gridSize));
+    uint gridPosy = uint(floor(particle.pos.y * gridSize));
     uint gridIndex = gridPosy * gridSize + gridPosx;
 
     // Increment the bucket size for the corresponding cell
-    boids[gid].bucketIndex = atomicAdd(bucketSizes[gridIndex], 1);
-    boids[gid].gridIndex = gridIndex;
+    particles[gid].bucketIndex = atomicAdd(bucketSizes[gridIndex], 1);
+    particles[gid].gridIndex = gridIndex;
 }

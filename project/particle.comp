@@ -2,40 +2,41 @@
 #extension GL_ARB_compute_shader : enable
 #extension GL_ARB_shader_storage_buffer_object : enable
 
-struct BoidData {
+struct ParticleData {
     vec2 pos;
     vec2 vel;
+    vec2 acc;
     uint bucketIndex;
     uint gridIndex;
 };
 
-layout( std430, binding=3 ) buffer BoidBuffer
+// Particles come sorted by grid index
+layout( std430, binding=3 ) buffer ParticleBuffer
 {
-    BoidData boids[];
+    ParticleData particles[];
 };
 
-
-layout( std430, binding=4 ) readonly buffer PrefixSums
+layout( std430, binding=4 ) readonly buffer PrefixSumsBuffer
 {
     int prefixSums[];
 };
 
-
 uniform float deltaTime;
 uniform float time;
 
-uniform float visualRange;
-uniform float protectedRange;
-uniform float centeringFactor;
-uniform float matchingFactor;
-uniform float avoidFactor;
-uniform float borderMargin;
-uniform float turnFactor;
-uniform float minSpeed;
-uniform float maxSpeed;
-uniform float randFactor;
-
 uniform int gridSize;
+
+float gravity = -9.81;
 
 layout( local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
+void main() {
+    uint gid = gl_GlobalInvocationID.x;
+    if (gid >= particles.length()) return;
+
+    ParticleData particle = particles[gid];
+    
+    particle.pos.y += -1.0 * deltaTime;
+
+    particles[gid] = particle;
+}
