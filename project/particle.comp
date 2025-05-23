@@ -26,7 +26,7 @@ uniform float time;
 
 uniform int gridSize;
 
-float gravity = -9.81;
+float gravity = -1.0;
 
 layout( local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
@@ -37,19 +37,19 @@ void main() {
     ParticleData particle = particles[gid];
     
     // Apply gravity
-    particle.acc.y += gravity * deltaTime;
-    particle.vel += particle.acc * deltaTime;
+    //particle.acc.y += gravity * deltaTime;
+    particle.vel.y += gravity * deltaTime;
     particle.pos += particle.vel * deltaTime;
 
     // Bounce off the walls
-    if (particle.pos.x < 0.0 || particle.pos.x > 1.0) {
+    if (particle.pos.x < -1.0 || particle.pos.x > 1.0) {
         particle.vel.x = -particle.vel.x;
-        particle.pos.x = clamp(particle.pos.x, 0.0, 1.0);
+        particle.pos.x = clamp(particle.pos.x, -1.0, 1.0);
     }
-    if (particle.pos.y < 0.0 || particle.pos.y > 1.0) {
+    if (particle.pos.y < -1.0 || particle.pos.y > 1.0) {
         particle.vel.y = -particle.vel.y;
-        particle.pos.y = clamp(particle.pos.y, 0.0, 1.0);
+        particle.pos.y = clamp(particle.pos.y, -1.0, 1.0);
     }
-    
+
     particles[gid] = particle;
 }

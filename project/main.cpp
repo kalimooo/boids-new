@@ -33,6 +33,7 @@ float currentTime = 0.0f;
 float previousTime = 0.0f;
 float deltaTime = 0.0f;
 int windowWidth, windowHeight;
+bool isPaused = false;
 
 // Mouse input
 ivec2 g_prevMouseCoords = { -1, -1 };
@@ -64,7 +65,7 @@ struct particle {
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_particleS = 100000;
+const int NUM_particleS = 5;
 
 particle* particles;
 
@@ -87,7 +88,7 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const GLint gridSize = 16;
+const GLint gridSize = 2;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
@@ -103,7 +104,7 @@ GLuint reindexShaderProgram;
 ///////////////////////////////////////////////////////////////////////////////
 FboInfo fbos[2];
 GLuint blendProgram;
-bool additiveBlending = false;
+bool additiveBlending = true;
 
 void initGrid() {
 	prefixSums = new GLuint[gridSize * gridSize];
@@ -574,6 +575,10 @@ bool handleEvents(void)
 		{
 			quitEvent = true;
 		}
+		if(event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_SPACE)
+		{
+			isPaused = !isPaused;
+		}
 		if(event.type == SDL_KEYUP && event.key.keysym.sym == SDLK_g)
 		{
 			if ( labhelper::isGUIvisible() )
@@ -654,6 +659,11 @@ int main(int argc, char* argv[])
 
 		// check events (keyboard among other)
 		stopRendering = handleEvents();
+
+		if (isPaused)
+		{
+			continue;
+		}
 
 		// Inform imgui of new frame
 		labhelper::newFrame( g_window );
