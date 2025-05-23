@@ -65,7 +65,7 @@ struct particle {
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_particleS = 5000;
+const int NUM_PARTICLES = 200000;
 
 particle* particles;
 
@@ -160,10 +160,10 @@ void reindexparticles() {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, bucketSizesSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, reorderedparticlesSSBO);
 
-	glDispatchCompute(NUM_particleS, 1, 1);
+	glDispatchCompute(NUM_PARTICLES, 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 	
-	glCopyNamedBufferSubData(reorderedparticlesSSBO, particleSSBO, 0, 0, sizeof(particle) * NUM_particleS);
+	glCopyNamedBufferSubData(reorderedparticlesSSBO, particleSSBO, 0, 0, sizeof(particle) * NUM_PARTICLES);
 }
 
 void updateGrid() {
@@ -180,7 +180,7 @@ void updateGrid() {
 		glUseProgram(gridShaderProgram);
 		labhelper::setUniformSlow(gridShaderProgram, "gridSize", gridSize);
 		// labhelper::setUniformSlow(gridShaderProgram, "gridCellSize", 1.0f / gridSize);
-		glDispatchCompute(NUM_particleS, 1, 1);
+		glDispatchCompute(NUM_PARTICLES, 1, 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 		// Map bucketSizes buffer back to CPU
@@ -209,7 +209,7 @@ void updateGrid() {
 		reindexparticles();
 	}
 
-	// for (int i = 0; i < NUM_particleS; i++) {
+	// for (int i = 0; i < NUM_PARTICLES; i++) {
 	// 	printf("particle %d: (%.2f, %.2f) -> %d, %d\n", i, particles[i].position.x, particles[i].position.y, particles[i].gridIndex, particles[i].bucketIndex);
 	// }
 	// printf("BucketSizes:\n");
@@ -223,10 +223,10 @@ void updateGrid() {
 void initializeparticles()
 {
     // Calculate the angular spacing between particles
-    float angleStep = 2.0f * M_PI / NUM_particleS;
-	particles = new particle[NUM_particleS];
+    float angleStep = 2.0f * M_PI / NUM_PARTICLES;
+	particles = new particle[NUM_PARTICLES];
 
-    for (int i = 0; i < NUM_particleS; ++i)
+    for (int i = 0; i < NUM_PARTICLES; ++i)
     {
         // Calculate the angle for this particle
         float angle = i * angleStep;
@@ -237,7 +237,7 @@ void initializeparticles()
         // Set the velocity to point away from the center (is already normalized due to being on identity circle)
         particles[i].velocity = vec2(cos(angle), sin(angle));
 		
-		particles[i].position += vec2((float) i * 0.5 / (float) NUM_particleS) * particles[i].velocity;
+		particles[i].position += vec2((float) i * 0.5 / (float) NUM_PARTICLES) * particles[i].velocity;
     }
 }
 
@@ -245,7 +245,7 @@ void updateparticleVertices()
 {
 	glUseProgram(shaderProgram);
 	glBindBuffer(GL_ARRAY_BUFFER, posVBO);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(particle) * NUM_particleS, particles); // Update the VBO with current particle data
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(particle) * NUM_PARTICLES, particles); // Update the VBO with current particle data
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -261,7 +261,7 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 				1.0f - (2.0f * mousePos.y) / windowHeight);
 
 			printf("%d, %d \n", mousePos.x, mousePos.y);
-			for (int i = 0; i < NUM_particleS; i++)
+			for (int i = 0; i < NUM_PARTICLES; i++)
 			{
 				// Move particles toward the mouse position
 				vec2 direction = normalize(mouseNDC - particles[i].position);
@@ -297,22 +297,22 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			GLint bufMask = GL_MAP_WRITE_BIT;
 
 			// printf("Positions before shader: ");
-			// for (int i = 0; i < NUM_particleS; i++) {
+			// for (int i = 0; i < NUM_PARTICLES; i++) {
 			// 	printf("(%.2f, %.2f), ", particles[i].position.x, particles[i].position.y);
 			// }
 			// printf("\n");
 			
-			glDispatchCompute(NUM_particleS, 1, 1);
+			glDispatchCompute(NUM_PARTICLES, 1, 1);
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
 
 			glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleSSBO);
-			particles = (particle*) glMapBufferRange( GL_SHADER_STORAGE_BUFFER, 0, sizeof(particle) * NUM_particleS, bufMask);
+			particles = (particle*) glMapBufferRange( GL_SHADER_STORAGE_BUFFER, 0, sizeof(particle) * NUM_PARTICLES, bufMask);
 			if (particles == nullptr) {
 				printf("Error: Failed to map buffer.\n");
 				return;
 			}
 			// printf("Positions after shader: ");
-			// for (int i = 0; i < NUM_particleS; i++) {
+			// for (int i = 0; i < NUM_PARTICLES; i++) {
 			// 	printf("(%.2f, %.2f), ", particles[i].position.x, particles[i].position.y);			
 			// }
 			// printf("\n\n");
@@ -323,7 +323,7 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			}
 		}
 		else {
-			for (int i = 0; i < NUM_particleS; i++) {
+			for (int i = 0; i < NUM_PARTICLES; i++) {
 				particles[i].position += vec2(0.01f) * deltaTime;
 			}
 		}
@@ -396,7 +396,7 @@ void initialize()
 	///////////////////////////////////////////////////////////////////////
 	glGenBuffers(1, &posVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, posVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(particle) * NUM_particleS, particles, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(particle) * NUM_PARTICLES, particles, GL_DYNAMIC_DRAW);
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -413,7 +413,7 @@ void initialize()
 	// Positions
 	glGenBuffers(1, &particleSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, particleSSBO);
-	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(particle) * NUM_particleS, particles,
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(particle) * NUM_PARTICLES, particles,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, particleSSBO);
 
@@ -430,7 +430,7 @@ void initialize()
 	// Reindexed particles
 	glGenBuffers(1, &reorderedparticlesSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, reorderedparticlesSSBO);
-	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(particle) * NUM_particleS, nullptr,
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, sizeof(particle) * NUM_PARTICLES, nullptr,
 					GL_MAP_READ_BIT | GL_MAP_WRITE_BIT | GL_DYNAMIC_STORAGE_BIT);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, reorderedparticlesSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -511,7 +511,7 @@ void display(void)
 		labhelper::setUniformSlow(shaderProgram, "minSpeed", minSpeed);
 		labhelper::setUniformSlow(shaderProgram, "maxSpeed", maxSpeed);
 		glBindVertexArray(vao);
-		glDrawArrays(GL_POINTS, 0, NUM_particleS);
+		glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
 		glBindVertexArray(0);
 	}
 	{

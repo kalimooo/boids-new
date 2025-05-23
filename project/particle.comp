@@ -35,21 +35,58 @@ void main() {
     if (gid >= particles.length()) return;
 
     ParticleData particle = particles[gid];
+
+    uint gridIndex = particle.gridIndex;
+
+    uint gridRow = gridIndex / gridSize;
+    uint gridCol = gridIndex % gridSize;
+
+    // Loop through the 3x3 grid cells
+    for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
+        for (int colOffset = -1; colOffset <= 1; colOffset++) {
+            int neighborRow = int(gridRow) + rowOffset;
+            int neighborCol = int(gridCol) + colOffset;
+
+            // Skip out-of-bounds neighbors
+            if (neighborRow < 0 || neighborRow >= int(gridSize) || neighborCol < 0 || neighborCol >= int(gridSize)) {
+                continue;
+            }
+
+            // Calculate the neighboring cell's grid index
+            uint neighborGridIndex = uint(neighborRow) * gridSize + uint(neighborCol);
+            if (neighborGridIndex != gridIndex) continue;
+            int startIndex = prefixSums[neighborGridIndex];
+            int endIndex = prefixSums[neighborGridIndex + 1];
+
+            for (int i = startIndex; i < endIndex; i++) {
+                if (i == gid) continue;
+
+                ParticleData other = particles[i];
+                float dx = particle.pos.x - other.pos.x;
+                float dy = particle.pos.y - other.pos.y;
+
+                particle.vel += vec2(dx, dy);
+            }
+        }
+    }
+
+    particle.vel = normalize(particle.vel) * 0.1;
+    particle.pos += particle.vel * deltaTime;
     
     // Apply gravity
     //particle.acc.y += gravity * deltaTime;
-    particle.vel.y += gravity * deltaTime;
-    particle.pos += particle.vel * deltaTime;
+    // particle.vel.y += gravity * deltaTime;
+    // particle.pos += particle.vel * deltaTime;
 
-    // Bounce off the walls
-    if (particle.pos.x < -1.0 || particle.pos.x > 1.0) {
-        particle.vel.x = -particle.vel.x;
-        particle.pos.x = clamp(particle.pos.x, -1.0, 1.0);
-    }
-    if (particle.pos.y < -1.0 || particle.pos.y > 1.0) {
-        particle.vel.y = -particle.vel.y;
-        particle.pos.y = clamp(particle.pos.y, -1.0, 1.0);
-    }
+    // // Bounce off the walls
+    // if (particle.pos.x < -1.0 || particle.pos.x > 1.0) {
+    //     particle.vel.x = -particle.vel.x;
+    //     particle.pos.x = clamp(particle.pos.x, -1.0, 1.0);
+    // }
+    // if (particle.pos.y < -1.0 || particle.pos.y > 1.0) {
+    //     particle.vel.y = -particle.vel.y;
+    //     particle.pos.y = clamp(particle.pos.y, -1.0, 1.0);
+    // }
 
     particles[gid] = particle;
 }
