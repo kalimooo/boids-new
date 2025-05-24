@@ -32,7 +32,7 @@ uniform float mouseY;
 vec2 mouseCoords;
 
 float gravity = -9.82;
-float smoothingRadius = 0.2;
+float smoothingRadius = 0.3;
 
 float SpikyKernel(float distance, float radius) {
     if (distance >= radius) return 0.0;
