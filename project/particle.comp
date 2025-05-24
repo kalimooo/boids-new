@@ -9,6 +9,7 @@ struct ParticleData {
     vec2 vel;
     uint bucketIndex;
     uint gridIndex;
+    vec2 data;
 };
 
 // Particles come sorted by grid index

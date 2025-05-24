@@ -59,6 +59,7 @@ struct particle {
 	vec2 velocity;
 	uint bucketIndex;
 	uint gridIndex;
+	vec2 data;
 };
 
 GLuint posVBO;
