@@ -257,10 +257,10 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 		{
 			// Convert mouse position to normalized device coordinates (NDC)
 			vec2 mouseNDC = vec2(
-				(2.0f * mousePos.x) / windowWidth - 1.0f,
-				1.0f - (2.0f * mousePos.y) / windowHeight);
+				((float) mousePos.x / (float) windowWidth - 0.5f) * 2.0f,
+				1.0f - (2.0f * (float)mousePos.y) / (float)windowHeight);
 
-			printf("%d, %d \n", mousePos.x, mousePos.y);
+			printf("%.2f, %.2f \n", (float) mouseNDC.x, (float)mouseNDC.y);
 			for (int i = 0; i < NUM_PARTICLES; i++)
 			{
 				// Move particles toward the mouse position
@@ -278,6 +278,12 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			labhelper::setUniformSlow(computeShaderProgram, "deltaTime", deltaTime);
 			labhelper::setUniformSlow(computeShaderProgram, "time", currentTime);
 			labhelper::setUniformSlow(computeShaderProgram, "gridSize", gridSize);
+
+			float mouseX = (2.0f * mousePos.x) / windowWidth - 1.0f;
+			float mouseY = 1.0f - (2.0f * mousePos.y) / windowHeight;
+
+			labhelper::setUniformSlow(computeShaderProgram, "mouseX", mouseX);
+			labhelper::setUniformSlow(computeShaderProgram, "mouseY", mouseY);
 
 			// labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
 			// labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
@@ -316,6 +322,9 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			// 	printf("(%.2f, %.2f), ", particles[i].position.x, particles[i].position.y);			
 			// }
 			// printf("\n\n");
+
+			printf("%.2f, %.2f\n", particles[0].data.x, particles[0].data.y);
+			//printf("%.2f\n", mouseX);
 			
 			if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
 				printf("Error: Failed to unmap buffer.\n");

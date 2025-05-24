@@ -27,9 +27,12 @@ uniform float deltaTime;
 uniform float time;
 
 uniform int gridSize;
-uniform vec2 mouseCoords;
+uniform float mouseX;
+uniform float mouseY;
+vec2 mouseCoords;
 
 float gravity = -9.82;
+float smoothingRadius = 0.2;
 
 float SpikyKernel(float distance, float radius) {
     if (distance >= radius) return 0.0;
@@ -43,7 +46,12 @@ void main() {
     uint gid = gl_GlobalInvocationID.x;
     if (gid >= particles.length()) return;
 
+    mouseCoords = vec2(mouseX, mouseY);
+
     ParticleData particle = particles[gid];
+
+    particle.data = vec2(SpikyKernel(length(particle.pos - mouseCoords), smoothingRadius));
+    particle.data = mouseCoords;
 
     // uint gridIndex = particle.gridIndex;
 
