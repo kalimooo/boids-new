@@ -51,7 +51,6 @@ void main() {
     ParticleData particle = particles[gid];
 
     particle.data = vec2(SpikyKernel(length(particle.pos - mouseCoords), smoothingRadius));
-    particle.data = mouseCoords;
 
     // uint gridIndex = particle.gridIndex;
 
