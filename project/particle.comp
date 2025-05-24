@@ -2,10 +2,11 @@
 #extension GL_ARB_compute_shader : enable
 #extension GL_ARB_shader_storage_buffer_object : enable
 
+layout( local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
 struct ParticleData {
     vec2 pos;
     vec2 vel;
-    vec2 acc;
     uint bucketIndex;
     uint gridIndex;
 };
@@ -25,10 +26,17 @@ uniform float deltaTime;
 uniform float time;
 
 uniform int gridSize;
+uniform vec2 mouseCoords;
 
 float gravity = -9.82;
 
-layout( local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+float SpikyKernel(float distance, float radius) {
+    if (distance >= radius) return 0.0;
+
+    float q = distance - radius;
+    return q * q;
+    // return q * q * q;
+}
 
 void main() {
     uint gid = gl_GlobalInvocationID.x;
@@ -36,42 +44,42 @@ void main() {
 
     ParticleData particle = particles[gid];
 
-    uint gridIndex = particle.gridIndex;
+    // uint gridIndex = particle.gridIndex;
 
-    uint gridRow = gridIndex / gridSize;
-    uint gridCol = gridIndex % gridSize;
+    // uint gridRow = gridIndex / gridSize;
+    // uint gridCol = gridIndex % gridSize;
 
-    // Loop through the 3x3 grid cells
-    for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
-        for (int colOffset = -1; colOffset <= 1; colOffset++) {
-            int neighborRow = int(gridRow) + rowOffset;
-            int neighborCol = int(gridCol) + colOffset;
+    // // Loop through the 3x3 grid cells
+    // for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
+    //     for (int colOffset = -1; colOffset <= 1; colOffset++) {
+    //         int neighborRow = int(gridRow) + rowOffset;
+    //         int neighborCol = int(gridCol) + colOffset;
 
-            // Skip out-of-bounds neighbors
-            if (neighborRow < 0 || neighborRow >= int(gridSize) || neighborCol < 0 || neighborCol >= int(gridSize)) {
-                continue;
-            }
+    //         // Skip out-of-bounds neighbors
+    //         if (neighborRow < 0 || neighborRow >= int(gridSize) || neighborCol < 0 || neighborCol >= int(gridSize)) {
+    //             continue;
+    //         }
 
-            // Calculate the neighboring cell's grid index
-            uint neighborGridIndex = uint(neighborRow) * gridSize + uint(neighborCol);
-            if (neighborGridIndex != gridIndex) continue;
-            int startIndex = prefixSums[neighborGridIndex];
-            int endIndex = prefixSums[neighborGridIndex + 1];
+    //         // Calculate the neighboring cell's grid index
+    //         uint neighborGridIndex = uint(neighborRow) * gridSize + uint(neighborCol);
+    //         if (neighborGridIndex != gridIndex) continue;
+    //         int startIndex = prefixSums[neighborGridIndex];
+    //         int endIndex = prefixSums[neighborGridIndex + 1];
 
-            for (int i = startIndex; i < endIndex; i++) {
-                if (i == gid) continue;
+    //         for (int i = startIndex; i < endIndex; i++) {
+    //             if (i == gid) continue;
 
-                ParticleData other = particles[i];
-                float dx = particle.pos.x - other.pos.x;
-                float dy = particle.pos.y - other.pos.y;
+    //             ParticleData other = particles[i];
+    //             float dx = particle.pos.x - other.pos.x;
+    //             float dy = particle.pos.y - other.pos.y;
 
-                particle.vel += vec2(dx, dy);
-            }
-        }
-    }
+    //             particle.vel += vec2(dx, dy);
+    //         }
+    //     }
+    // }
 
-    particle.vel = normalize(particle.vel) * 0.1;
-    particle.pos += particle.vel * deltaTime;
+    // particle.vel = normalize(particle.vel) * 0.1;
+    // particle.pos += particle.vel * deltaTime;
     
     // Apply gravity
     //particle.acc.y += gravity * deltaTime;

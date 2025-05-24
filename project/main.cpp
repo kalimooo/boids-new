@@ -57,7 +57,6 @@ GLuint vao;
 struct particle {
 	vec2 position;
 	vec2 velocity;
-	vec2 acceleration;
 	uint bucketIndex;
 	uint gridIndex;
 };
@@ -65,7 +64,7 @@ struct particle {
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_PARTICLES = 200000;
+const int NUM_PARTICLES = 1;
 
 particle* particles;
 

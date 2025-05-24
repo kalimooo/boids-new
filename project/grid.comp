@@ -5,7 +5,6 @@
 struct ParticleData {
     vec2 pos;
     vec2 vel;
-    vec2 acc;
     uint bucketIndex;
     uint gridIndex;
 };
