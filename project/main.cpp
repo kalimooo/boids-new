@@ -65,7 +65,7 @@ struct particle {
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_PARTICLES = 3;
+const int NUM_PARTICLES = 300;
 
 particle* particles;
 
@@ -88,7 +88,7 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const GLint gridSize = 2;
+const GLint gridSize = 1;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
