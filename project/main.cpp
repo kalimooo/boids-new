@@ -59,13 +59,13 @@ struct particle {
 	vec2 velocity;
 	uint bucketIndex;
 	uint gridIndex;
-	vec2 data;
+	vec2 density;
 };
 
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_PARTICLES = 1;
+const int NUM_PARTICLES = 3;
 
 particle* particles;
 
@@ -88,7 +88,7 @@ float randFactor = 0.05f;
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const GLint gridSize = 1;
+const GLint gridSize = 2;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
@@ -323,7 +323,7 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			// }
 			// printf("\n\n");
 
-			printf("%.2f, %.2f\n", particles[0].data.x, particles[0].data.y);
+			printf("%.2f, %.2f\n", particles[0].density.x, particles[0].density.y);
 			//printf("%.2f\n", mouseX);
 			
 			if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
