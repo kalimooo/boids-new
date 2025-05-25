@@ -105,14 +105,14 @@ FboInfo fbos[2];
 GLuint blendProgram;
 bool additiveBlending = true;
 
-const int NUM_PARTICLES = 2;
+const int NUM_PARTICLES = 100;
 const GLint gridSize = 1;
 
 float kernelScalingFactor = 0.5f;
 bool gravityEnabled = false;
 float gravityStrength = 0.1f;
-float smoothingRadius = 2.0f / (float) gridSize;
-
+float smoothingRadius = 0.2f;
+//float smoothingRadius = 2.0f / (float) gridSize;
 
 
 void initGrid() {

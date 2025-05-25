@@ -44,7 +44,7 @@ float SpikyKernel(float distance, float radius) {
     float area = 3.14159 * radius * radius;
 
     float q = distance - radius;
-    return q * q  / area;
+    return q * q * kernelScalingFactor / area;
     // return q * q * q;
 }
 
@@ -94,7 +94,7 @@ float CalculateDensity(uint id, vec2 particlePos) {
 }
 
 vec2 CalculateDensityGradient(uint id) {
-    const float stepSize = 0.001;
+    const float stepSize = 0.0001;
     ParticleData particle = particles[id];
     float deltaX = CalculateDensity(id, particle.pos + (vec2(1.0, 0.0) * stepSize)) -
         CalculateDensity(id, particle.pos);
@@ -186,12 +186,14 @@ void main() {
         particle.vel.y = -abs(particle.vel.y) * collisionDampingFactor;
         particle.pos.y = 1.0 - 1e-2; // Increase the offset
     }
+
     if (gravityEnabled) {
         particle.vel.y += gravity * deltaTime;
     }
-    particle.density = particle.density + 1e-6; // Prevent division by zero for some weird reason
-    particle.vel = gradient * vec2(deltaTime) * (vec2(1.0) / particle.density);
-    //particle.pos += particle.vel * deltaTime;
+
+    //particle.density = particle.density + 1e-6; // Prevent division by zero for some weird reason
+    particle.vel += gradient * vec2(deltaTime) * (1.0 / particle.density);
+    particle.pos += particle.vel * deltaTime;
 
     particles[gid] = particle;
 }
