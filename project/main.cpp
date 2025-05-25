@@ -59,7 +59,8 @@ struct particle {
 	vec2 velocity;
 	uint bucketIndex;
 	uint gridIndex;
-	vec2 density;
+	float density;
+	float padding;
 };
 
 GLuint posVBO;
@@ -84,14 +85,9 @@ float minSpeed = 0.2;
 float maxSpeed = 0.3;
 float randFactor = 0.05f;
 
-float kernelScalingFactor = 0.5f;
-bool gravityEnabled = false; 
-
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const int NUM_PARTICLES = 20000;
-const GLint gridSize = 32;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
@@ -108,6 +104,16 @@ GLuint reindexShaderProgram;
 FboInfo fbos[2];
 GLuint blendProgram;
 bool additiveBlending = true;
+
+const int NUM_PARTICLES = 200;
+const GLint gridSize = 2;
+
+float kernelScalingFactor = 0.5f;
+bool gravityEnabled = false;
+float gravityStrength = 0.1f;
+float smoothingRadius = 2.0f / (float) gridSize;
+
+
 
 void initGrid() {
 	prefixSums = new GLuint[gridSize * gridSize];
@@ -225,23 +231,54 @@ void updateGrid() {
 
 void initializeparticles()
 {
-    // Calculate the angular spacing between particles
-    float angleStep = 2.0f * M_PI / NUM_PARTICLES;
+	float margin = 0.1f; // Margin to avoid particles being too close to the edges
+	float range = 1.0f - margin;
+
 	particles = new particle[NUM_PARTICLES];
 
-    for (int i = 0; i < NUM_PARTICLES; ++i)
-    {
-        // Calculate the angle for this particle
-        float angle = i * angleStep;
+	for (int i = 0; i < NUM_PARTICLES; ++i)
+	{
+		// Generate random position within the range [-1 + margin, 1 - margin]
+        float x = margin + static_cast<float>(rand()) / RAND_MAX * (2.0f * range) - range;
+        float y = margin + static_cast<float>(rand()) / RAND_MAX * (2.0f * range) - range;
 
-		// Everything spawns in the middle
-		particles[i].position = vec2(0.0f);
+        // Add slight random perturbation
+        float perturbationX = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.05f;
+        float perturbationY = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.05f;
 
-        // Set the velocity to point away from the center (is already normalized due to being on identity circle)
-        particles[i].velocity = vec2(cos(angle), sin(angle));
+        particles[i].position = vec2(x + perturbationX, y + perturbationY);
+
+        // Initialize velocity with a random direction and magnitude
+        //float angle = static_cast<float>(rand()) / RAND_MAX * 2.0f * M_PI;
+        //float speed = minSpeed + static_cast<float>(rand()) / RAND_MAX * (maxSpeed - minSpeed);
+        //particles[i].velocity = vec2(cos(angle), sin(angle)) * speed;
+		particles[i].velocity = vec2(0.0f); // Start with zero velocity
+
+		// Initialize bucket index and grid index
+		particles[i].bucketIndex = 0;
+		particles[i].gridIndex = 0;
+
+		// Initialize density to zero
+		particles[i].density = 0.0f;
+	}
+
+    // // Calculate the angular spacing between particles
+    // float angleStep = 2.0f * M_PI / NUM_PARTICLES;
+	// particles = new particle[NUM_PARTICLES];
+
+    // for (int i = 0; i < NUM_PARTICLES; ++i)
+    // {
+    //     // Calculate the angle for this particle
+    //     float angle = i * angleStep;
+
+	// 	// Everything spawns in the middle
+	// 	particles[i].position = vec2(0.0f);
+
+    //     // Set the velocity to point away from the center (is already normalized due to being on identity circle)
+    //     particles[i].velocity = vec2(cos(angle), sin(angle));
 		
-		particles[i].position += vec2((float) i * 0.5 / (float) NUM_PARTICLES) * particles[i].velocity;
-    }
+	// 	particles[i].position += vec2((float) i * 0.5 / (float) NUM_PARTICLES) * particles[i].velocity;
+    // }
 }
 
 void updateparticleVertices()
@@ -288,7 +325,9 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			labhelper::setUniformSlow(computeShaderProgram, "mouseX", mouseX);
 			labhelper::setUniformSlow(computeShaderProgram, "mouseY", mouseY);
 			labhelper::setUniformSlow(computeShaderProgram, "kernelScalingFactor", kernelScalingFactor);
+			labhelper::setUniformSlow(computeShaderProgram, "smoothingRadius", smoothingRadius);
 			labhelper::setUniformSlow(computeShaderProgram, "gravityEnabled", gravityEnabled);
+			labhelper::setUniformSlow(computeShaderProgram, "gravityStrength", gravityStrength);
 
 			// labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
 			// labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
@@ -328,8 +367,8 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			// }
 			// printf("\n\n");
 
-			printf("0: %.4f, %.4f\n", particles[0].density.x, particles[0].density.y);
-			printf("1: %.4f, %.4f\n", particles[1].density.x, particles[1].density.y);
+			printf("0: %.4f\n", particles[0].density);
+			printf("1: %.4f\n", particles[1].density);
 			//printf("%.2f\n", mouseX);
 			
 			if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
@@ -631,7 +670,10 @@ void gui()
 
 	ImGui::Text("particle parameters:");
 	ImGui::SliderFloat("kernelScalingFactor", &kernelScalingFactor, 0.01f, 10.0f);
+	ImGui::SliderFloat("smoothingRadius", &smoothingRadius, 0.01f, 2.0f / (float)gridSize);
 	ImGui::Checkbox("Gravity enabled", &gravityEnabled);
+	ImGui::SliderFloat("gravityStrength", &gravityStrength, 0.0f, 1.0f);
+
 	// ImGui::SliderFloat("visualRange", &visualRange, 0.0f, 2.0f);
 	// ImGui::SliderFloat("protectedRange", &protectedRange, 0.0f, 1.0f);
 	// ImGui::SliderFloat("centeringFactor", &centeringFactor, 0.0f, 0.1f);

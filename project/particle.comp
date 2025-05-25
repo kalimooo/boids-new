@@ -9,7 +9,8 @@ struct ParticleData {
     vec2 vel;
     uint bucketIndex;
     uint gridIndex;
-    vec2 density;
+    float density;
+    float padding;
 };
 
 // Particles come sorted by grid index
@@ -45,6 +46,50 @@ float SpikyKernel(float distance, float radius) {
     // return q * q * q;
 }
 
+float CalculateDensity(uint id) {
+    float density = 0;
+    float mass = 1;
+
+    ParticleData particle = particles[id];
+
+    uint gridIndex = particle.gridIndex;
+    uint gridRow = gridIndex / gridSize;
+    uint gridCol = gridIndex % gridSize;
+
+    // Loop through the 3x3 grid cells
+    for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
+        for (int colOffset = -1; colOffset <= 1; colOffset++) {
+            int neighborRow = int(gridRow) + rowOffset;
+            int neighborCol = int(gridCol) + colOffset;
+
+            // Skip out-of-bounds neighbors
+            if (neighborRow < 0 || neighborRow >= gridSize || neighborCol < 0 || neighborCol >= gridSize) {
+                continue;
+            }
+
+            // Calculate the neighboring cell's grid index
+            uint neighborGridIndex = uint(neighborRow) * gridSize + uint(neighborCol);
+            
+            int startIndex = prefixSums[neighborGridIndex];
+            int endIndex;
+            // Ensure we don't go out of bounds
+            if (neighborGridIndex + 1 >= prefixSums.length()) {
+                endIndex = particles.length();
+            }
+            else {
+                endIndex = prefixSums[neighborGridIndex + 1];
+            }
+
+            for (int i = startIndex; i < endIndex; i++) {
+                ParticleData other = particles[i];
+                density += SpikyKernel(length(other.pos - particle.pos), smoothingRadius);
+            }
+        }
+    }
+
+    return density;
+}
+
 void main() {
     uint gid = gl_GlobalInvocationID.x;
     if (gid >= particles.length()) return;
@@ -52,6 +97,7 @@ void main() {
     mouseCoords = vec2(mouseX, mouseY);
 
     ParticleData particle = particles[gid];
+    particle.density = CalculateDensity(gid);
 
     // Apply gravity
     //particle.vel.y += gravity * deltaTime;
@@ -61,7 +107,6 @@ void main() {
     uint gridRow = gridIndex / gridSize;
     uint gridCol = gridIndex % gridSize;
 
-    particle.density = vec2(0.0);
     vec2 gradient = vec2(0.0);
     const float stepSize = 0.001;
 
@@ -93,7 +138,6 @@ void main() {
 
             for (int i = startIndex; i < endIndex; i++) {
                 ParticleData other = particles[i];
-                particle.density += vec2(SpikyKernel(length(particle.pos - other.pos), smoothingRadius));
                 if (i == gid) continue;
 
 
@@ -133,11 +177,9 @@ void main() {
     if (gravityEnabled) {
         particle.vel.y += gravity * deltaTime;
     }
-    particle.density = particle.density + vec2(1e-6); // Prevent division by zero for some weird reason
+    particle.density = particle.density + 1e-6; // Prevent division by zero for some weird reason
     particle.vel += gradient * vec2(deltaTime) * (vec2(1.0) / particle.density);
     particle.pos += particle.vel * deltaTime;
-
-    
 
     particles[gid] = particle;
 }
