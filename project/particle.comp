@@ -32,13 +32,16 @@ uniform float mouseY;
 vec2 mouseCoords;
 
 float gravity = -9.82;
-float smoothingRadius = 0.8;
+float smoothingRadius = 2.0 / float(gridSize);
+const float collisionDampingFactor = 0.95;
+uniform float kernelScalingFactor;
+uniform bool gravityEnabled;
 
 float SpikyKernel(float distance, float radius) {
     if (distance >= radius) return 0.0;
 
     float q = distance - radius;
-    return q * q;
+    return q * q * kernelScalingFactor;
     // return q * q * q;
 }
 
@@ -50,13 +53,15 @@ void main() {
 
     ParticleData particle = particles[gid];
 
-    //particle.data = vec2(SpikyKernel(length(particle.pos - mouseCoords), smoothingRadius));
+    // Apply gravity
+    //particle.vel.y += gravity * deltaTime;
 
     uint gridIndex = particle.gridIndex;
 
     uint gridRow = gridIndex / gridSize;
     uint gridCol = gridIndex % gridSize;
 
+    particle.density = vec2(0.0);
     vec2 gradient = vec2(0.0);
     const float stepSize = 0.001;
 
@@ -67,7 +72,7 @@ void main() {
             int neighborCol = int(gridCol) + colOffset;
 
             // Skip out-of-bounds neighbors
-            if (neighborRow < 0 || neighborRow >= int(gridSize) || neighborCol < 0 || neighborCol >= int(gridSize)) {
+            if (neighborRow < 0 || neighborRow >= gridSize || neighborCol < 0 || neighborCol >= gridSize) {
                 continue;
             }
 
@@ -87,14 +92,17 @@ void main() {
             }
 
             for (int i = startIndex; i < endIndex; i++) {
+                ParticleData other = particles[i];
+                particle.density += vec2(SpikyKernel(length(particle.pos - other.pos), smoothingRadius));
                 if (i == gid) continue;
 
-                ParticleData other = particles[i];
 
-                particle.density = vec2(SpikyKernel(length(particle.pos - other.pos), smoothingRadius));
+                //particle.density += vec2(-1.0);
                 // Calculate the gradient
-                float deltaX = SpikyKernel(length((particle.pos + vec2(stepSize, 0.0)) - other.pos), smoothingRadius) - particle.density.x;
-                float deltaY = SpikyKernel(length((particle.pos + vec2(0.0, stepSize)) - other.pos), smoothingRadius) - particle.density.y;
+                float deltaX = SpikyKernel(length((particle.pos + vec2(stepSize, 0.0)) - other.pos), smoothingRadius) - 
+                    SpikyKernel(length(particle.pos - other.pos), smoothingRadius);
+                float deltaY = SpikyKernel(length((particle.pos + vec2(0.0, stepSize)) - other.pos), smoothingRadius) - 
+                    SpikyKernel(length(particle.pos - other.pos), smoothingRadius);
                 gradient -= vec2(deltaX, deltaY) / vec2(stepSize);
 
                 float dx = other.pos.x - particle.pos.x;
@@ -105,24 +113,31 @@ void main() {
             }
         }
     }
-
-    particle.vel = gradient * deltaTime;
-    particle.pos += particle.vel * deltaTime;
-    
-    // Apply gravity
-    //particle.acc.y += gravity * deltaTime;
-    // particle.vel.y += gravity * deltaTime;
-    // particle.pos += particle.vel * deltaTime;
-
     // Bounce off the walls
-    if (particle.pos.x < -1.0 || particle.pos.x > 1.0) {
-        particle.vel.x = -particle.vel.x;
-        particle.pos.x = clamp(particle.pos.x, -1.0, 1.0);
+    if (particle.pos.x < -1.0) {
+        particle.vel.x = abs(particle.vel.x) * collisionDampingFactor; // Add a small push
+        particle.pos.x = -1.0 + 1e-2; // Increase the offset
     }
-    if (particle.pos.y < -1.0 || particle.pos.y > 1.0) {
-        particle.vel.y = -particle.vel.y;
-        particle.pos.y = clamp(particle.pos.y, -1.0, 1.0);
+    if (particle.pos.x > 1.0) {
+        particle.vel.x = -abs(particle.vel.x) * collisionDampingFactor;
+        particle.pos.x = 1.0 - 1e-2; // Increase the offset
     }
+    if (particle.pos.y < -1.0) {
+        particle.vel.y = abs(particle.vel.y) * collisionDampingFactor;
+        particle.pos.y = -1.0 + 1e-2; // Increase the offset
+    }
+    if (particle.pos.y > 1.0) {
+        particle.vel.y = -abs(particle.vel.y) * collisionDampingFactor;
+        particle.pos.y = 1.0 - 1e-2; // Increase the offset
+    }
+    if (gravityEnabled) {
+        particle.vel.y += gravity * deltaTime;
+    }
+    particle.density = particle.density + vec2(1e-6); // Prevent division by zero for some weird reason
+    particle.vel += gradient * vec2(deltaTime) * (vec2(1.0) / particle.density);
+    particle.pos += particle.vel * deltaTime;
+
+    
 
     particles[gid] = particle;
 }

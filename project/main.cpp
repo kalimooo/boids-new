@@ -65,7 +65,6 @@ struct particle {
 GLuint posVBO;
 GLuint particleSSBO;
 
-const int NUM_PARTICLES = 300;
 
 particle* particles;
 
@@ -85,10 +84,14 @@ float minSpeed = 0.2;
 float maxSpeed = 0.3;
 float randFactor = 0.05f;
 
+float kernelScalingFactor = 0.5f;
+bool gravityEnabled = false; 
+
 ///////////////////////////////////////////////////////////////////////////////
 // Grid stuffs
 ///////////////////////////////////////////////////////////////////////////////
-const GLint gridSize = 1;
+const int NUM_PARTICLES = 20000;
+const GLint gridSize = 32;
 GLuint prefixSumSSBO;
 GLuint* prefixSums = nullptr;
 GLuint bucketSizesSSBO;
@@ -284,6 +287,8 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 
 			labhelper::setUniformSlow(computeShaderProgram, "mouseX", mouseX);
 			labhelper::setUniformSlow(computeShaderProgram, "mouseY", mouseY);
+			labhelper::setUniformSlow(computeShaderProgram, "kernelScalingFactor", kernelScalingFactor);
+			labhelper::setUniformSlow(computeShaderProgram, "gravityEnabled", gravityEnabled);
 
 			// labhelper::setUniformSlow(computeShaderProgram, "visualRange", visualRange);
 			// labhelper::setUniformSlow(computeShaderProgram, "protectedRange", protectedRange);
@@ -323,7 +328,8 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			// }
 			// printf("\n\n");
 
-			printf("%.2f, %.2f\n", particles[0].density.x, particles[0].density.y);
+			printf("0: %.4f, %.4f\n", particles[0].density.x, particles[0].density.y);
+			printf("1: %.4f, %.4f\n", particles[1].density.x, particles[1].density.y);
 			//printf("%.2f\n", mouseX);
 			
 			if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
@@ -624,16 +630,18 @@ void gui()
 	ImGui::Checkbox("Follow mouse", &followMouse);
 
 	ImGui::Text("particle parameters:");
-	ImGui::SliderFloat("visualRange", &visualRange, 0.0f, 2.0f);
-	ImGui::SliderFloat("protectedRange", &protectedRange, 0.0f, 1.0f);
-	ImGui::SliderFloat("centeringFactor", &centeringFactor, 0.0f, 0.1f);
-	ImGui::SliderFloat("matchingFactor", &matchingFactor, 0.0f, 0.1f);
-	ImGui::SliderFloat("avoidFactor", &avoidFactor, 0.0f, 0.5f);
-	ImGui::SliderFloat("borderMargin", &matchingFactor, 0.0f, 0.3f);
-	ImGui::SliderFloat("turnFactor", &turnFactor, 0.0f, 0.5f);
-	ImGui::SliderFloat("minSpeed", &minSpeed, 0.0f, 0.5f);
-	ImGui::SliderFloat("maxSpeed", &maxSpeed, 0.0f, 1.0f);
-	ImGui::SliderFloat("randFactor", &randFactor, 0.0f, 1.0f);
+	ImGui::SliderFloat("kernelScalingFactor", &kernelScalingFactor, 0.01f, 10.0f);
+	ImGui::Checkbox("Gravity enabled", &gravityEnabled);
+	// ImGui::SliderFloat("visualRange", &visualRange, 0.0f, 2.0f);
+	// ImGui::SliderFloat("protectedRange", &protectedRange, 0.0f, 1.0f);
+	// ImGui::SliderFloat("centeringFactor", &centeringFactor, 0.0f, 0.1f);
+	// ImGui::SliderFloat("matchingFactor", &matchingFactor, 0.0f, 0.1f);
+	// ImGui::SliderFloat("avoidFactor", &avoidFactor, 0.0f, 0.5f);
+	// ImGui::SliderFloat("borderMargin", &matchingFactor, 0.0f, 0.3f);
+	// ImGui::SliderFloat("turnFactor", &turnFactor, 0.0f, 0.5f);
+	// ImGui::SliderFloat("minSpeed", &minSpeed, 0.0f, 0.5f);
+	// ImGui::SliderFloat("maxSpeed", &maxSpeed, 0.0f, 1.0f);
+	// ImGui::SliderFloat("randFactor", &randFactor, 0.0f, 1.0f);
 
 
 
