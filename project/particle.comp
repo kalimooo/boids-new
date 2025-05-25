@@ -46,11 +46,12 @@ float SpikyKernel(float distance, float radius) {
     // return q * q * q;
 }
 
-float CalculateDensity(uint id) {
+float CalculateDensity(uint id, vec2 particlePos) {
     float density = 0;
     float mass = 1;
 
     ParticleData particle = particles[id];
+    particle.pos = particlePos;
 
     uint gridIndex = particle.gridIndex;
     uint gridRow = gridIndex / gridSize;
@@ -90,6 +91,11 @@ float CalculateDensity(uint id) {
     return density;
 }
 
+// vec2 CalculateDensityGradient(uint id) {
+//     const float stepSize = 0.001;
+//     float deltaX = CalculateDensity()
+// }
+
 void main() {
     uint gid = gl_GlobalInvocationID.x;
     if (gid >= particles.length()) return;
@@ -97,7 +103,7 @@ void main() {
     mouseCoords = vec2(mouseX, mouseY);
 
     ParticleData particle = particles[gid];
-    particle.density = CalculateDensity(gid);
+    particle.density = CalculateDensity(gid, particle.pos);
 
     // Apply gravity
     //particle.vel.y += gravity * deltaTime;
