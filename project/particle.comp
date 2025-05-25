@@ -41,8 +41,10 @@ uniform bool gravityEnabled;
 float SpikyKernel(float distance, float radius) {
     if (distance >= radius) return 0.0;
 
+    float area = 3.14159 * radius * radius;
+
     float q = distance - radius;
-    return q * q * kernelScalingFactor;
+    return q * q  / area;
     // return q * q * q;
 }
 
@@ -91,10 +93,16 @@ float CalculateDensity(uint id, vec2 particlePos) {
     return density;
 }
 
-// vec2 CalculateDensityGradient(uint id) {
-//     const float stepSize = 0.001;
-//     float deltaX = CalculateDensity()
-// }
+vec2 CalculateDensityGradient(uint id) {
+    const float stepSize = 0.001;
+    ParticleData particle = particles[id];
+    float deltaX = CalculateDensity(id, particle.pos + (vec2(1.0, 0.0) * stepSize)) -
+        CalculateDensity(id, particle.pos);
+    float deltaY = CalculateDensity(id, particle.pos + (vec2(0.0, 1.0) * stepSize)) -
+        CalculateDensity(id, particle.pos);
+
+    return -vec2(deltaX, deltaY) / stepSize;
+}
 
 void main() {
     uint gid = gl_GlobalInvocationID.x;
@@ -104,65 +112,63 @@ void main() {
 
     ParticleData particle = particles[gid];
     particle.density = CalculateDensity(gid, particle.pos);
+    vec2 gradient = CalculateDensityGradient(gid);
+  
+    // uint gridIndex = particle.gridIndex;
 
-    // Apply gravity
-    //particle.vel.y += gravity * deltaTime;
+    // uint gridRow = gridIndex / gridSize;
+    // uint gridCol = gridIndex % gridSize;
 
-    uint gridIndex = particle.gridIndex;
-
-    uint gridRow = gridIndex / gridSize;
-    uint gridCol = gridIndex % gridSize;
-
-    vec2 gradient = vec2(0.0);
-    const float stepSize = 0.001;
+    // vec2 gradient = vec2(0.0);
+    // const float stepSize = 0.001;
 
     // Loop through the 3x3 grid cells
-    for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
-        for (int colOffset = -1; colOffset <= 1; colOffset++) {
-            int neighborRow = int(gridRow) + rowOffset;
-            int neighborCol = int(gridCol) + colOffset;
+    // for (int rowOffset = -1; rowOffset <= 1; rowOffset++) {
+    //     for (int colOffset = -1; colOffset <= 1; colOffset++) {
+    //         int neighborRow = int(gridRow) + rowOffset;
+    //         int neighborCol = int(gridCol) + colOffset;
 
-            // Skip out-of-bounds neighbors
-            if (neighborRow < 0 || neighborRow >= gridSize || neighborCol < 0 || neighborCol >= gridSize) {
-                continue;
-            }
+    //         // Skip out-of-bounds neighbors
+    //         if (neighborRow < 0 || neighborRow >= gridSize || neighborCol < 0 || neighborCol >= gridSize) {
+    //             continue;
+    //         }
 
-            // Calculate the neighboring cell's grid index
-            uint neighborGridIndex = uint(neighborRow) * gridSize + uint(neighborCol);
+    //         // Calculate the neighboring cell's grid index
+    //         uint neighborGridIndex = uint(neighborRow) * gridSize + uint(neighborCol);
 
-            //if (neighborGridIndex != gridIndex) continue;
+    //         //if (neighborGridIndex != gridIndex) continue;
             
-            int startIndex = prefixSums[neighborGridIndex];
-            int endIndex;
-            // Ensure we don't go out of bounds
-            if (neighborGridIndex + 1 >= prefixSums.length()) {
-                endIndex = particles.length();
-            }
-            else {
-                endIndex = prefixSums[neighborGridIndex + 1];
-            }
+    //         int startIndex = prefixSums[neighborGridIndex];
+    //         int endIndex;
+    //         // Ensure we don't go out of bounds
+    //         if (neighborGridIndex + 1 >= prefixSums.length()) {
+    //             endIndex = particles.length();
+    //         }
+    //         else {
+    //             endIndex = prefixSums[neighborGridIndex + 1];
+    //         }
 
-            for (int i = startIndex; i < endIndex; i++) {
-                ParticleData other = particles[i];
-                if (i == gid) continue;
+    //         for (int i = startIndex; i < endIndex; i++) {
+    //             ParticleData other = particles[i];
+    //             if (i == gid) continue;
 
 
-                //particle.density += vec2(-1.0);
-                // Calculate the gradient
-                float deltaX = SpikyKernel(length((particle.pos + vec2(stepSize, 0.0)) - other.pos), smoothingRadius) - 
-                    SpikyKernel(length(particle.pos - other.pos), smoothingRadius);
-                float deltaY = SpikyKernel(length((particle.pos + vec2(0.0, stepSize)) - other.pos), smoothingRadius) - 
-                    SpikyKernel(length(particle.pos - other.pos), smoothingRadius);
-                gradient -= vec2(deltaX, deltaY) / vec2(stepSize);
+    //             //particle.density += vec2(-1.0);
+    //             // Calculate the gradient
+    //             float deltaX = SpikyKernel(length((particle.pos + vec2(stepSize, 0.0)) - other.pos), smoothingRadius) - 
+    //                 SpikyKernel(length(particle.pos - other.pos), smoothingRadius);
+    //             float deltaY = SpikyKernel(length((particle.pos + vec2(0.0, stepSize)) - other.pos), smoothingRadius) - 
+    //                 SpikyKernel(length(particle.pos - other.pos), smoothingRadius);
+    //             gradient -= vec2(deltaX, deltaY) / vec2(stepSize);
 
-                float dx = other.pos.x - particle.pos.x;
-                float dy = other.pos.y - particle.pos.y;
+    //             float dx = other.pos.x - particle.pos.x;
+    //             float dy = other.pos.y - particle.pos.y;
 
-                //particle.vel += vec2(dx, dy);
-                //particle.vel += gradient;// * vec2(10.0);
-            }
-        }
-    }
+    //             //particle.vel += vec2(dx, dy);
+    //             //particle.vel += gradient;// * vec2(10.0);
+    //         }
+    //     }
+    // }
     // Bounce off the walls
     if (particle.pos.x < -1.0) {
         particle.vel.x = abs(particle.vel.x) * collisionDampingFactor; // Add a small push
@@ -184,8 +190,8 @@ void main() {
         particle.vel.y += gravity * deltaTime;
     }
     particle.density = particle.density + 1e-6; // Prevent division by zero for some weird reason
-    particle.vel += gradient * vec2(deltaTime) * (vec2(1.0) / particle.density);
-    particle.pos += particle.vel * deltaTime;
+    particle.vel = gradient * vec2(deltaTime) * (vec2(1.0) / particle.density);
+    //particle.pos += particle.vel * deltaTime;
 
     particles[gid] = particle;
 }

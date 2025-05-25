@@ -105,8 +105,8 @@ FboInfo fbos[2];
 GLuint blendProgram;
 bool additiveBlending = true;
 
-const int NUM_PARTICLES = 200;
-const GLint gridSize = 2;
+const int NUM_PARTICLES = 2;
+const GLint gridSize = 1;
 
 float kernelScalingFactor = 0.5f;
 bool gravityEnabled = false;
