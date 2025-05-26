@@ -7,7 +7,9 @@ struct ParticleData {
     vec2 vel;
     uint bucketIndex;
     uint gridIndex;
-    vec2 data;
+    float density;
+    float padding;
+    vec2 grad;
 };
 
 // Input buffers

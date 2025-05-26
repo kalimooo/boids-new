@@ -61,6 +61,7 @@ struct particle {
 	uint gridIndex;
 	float density;
 	float padding;
+	vec2 grad;
 };
 
 GLuint posVBO;
@@ -105,8 +106,8 @@ FboInfo fbos[2];
 GLuint blendProgram;
 bool additiveBlending = true;
 
-const int NUM_PARTICLES = 100;
-const GLint gridSize = 1;
+const int NUM_PARTICLES = 20;
+const GLint gridSize = 2;
 
 float kernelScalingFactor = 0.5f;
 bool gravityEnabled = false;
@@ -367,8 +368,8 @@ void updateparticlePositions(float deltaTime, bool use_GPU)
 			// }
 			// printf("\n\n");
 
-			printf("0: %.4f\n", particles[0].density);
-			printf("1: %.4f\n", particles[1].density);
+			printf("0: Pos: (%.3f, %.3f), Density: %.3f, Gradient: (%.3f, %.3f)\n", particles[0].position.x, particles[0].position.y, particles[0].density, particles[0].grad.x, particles[0].grad.y);
+			printf("1: Pos: (%.3f, %.3f), Density: %.3f, Gradient: (%.3f, %.3f)\n", particles[1].position.x, particles[1].position.y, particles[1].density, particles[1].grad.x, particles[1].grad.y);
 			//printf("%.2f\n", mouseX);
 			
 			if (!glUnmapBuffer(GL_SHADER_STORAGE_BUFFER)) {
