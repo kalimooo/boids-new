@@ -119,8 +119,8 @@ vec2 CalculateDensityGradient(uint id) {
     return vec2(deltaX, deltaY) / stepSize;
 }
 
-float CalculateRepulsionForce(uint id) {
-    vec2 repulsionForce = 0.0;
+vec2 CalculateRepulsionForce(uint id) {
+    vec2 repulsionForce = vec2(0.0);
     float mass = 1;
 
     ParticleData particle = particles[id];

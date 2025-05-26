@@ -112,7 +112,7 @@ const GLint gridSize = 2;
 float kernelScalingFactor = 0.5f;
 bool gravityEnabled = false;
 float gravityStrength = 0.1f;
-float smoothingRadius = 0.2f;
+float smoothingRadius = 0.35f;
 //float smoothingRadius = 2.0f / (float) gridSize;
 
 
